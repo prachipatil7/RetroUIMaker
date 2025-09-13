@@ -10,15 +10,15 @@
  * Generates HTML content based on the original DOM
  * This function will be replaced with LLM-generated content
  * 
- * @param {string} originalHTML - The original HTML content of the page
+ * @param {Document} originalDOM - The original DOM object of the page
  * @returns {string} Clean HTML content without layout constraints
  */
-function generatePageHTML(originalHTML) {
+function generatePageHTML(originalDOM) {
   // For now, we'll create a static hello world page
-  // Later this can be replaced with LLM-generated content based on originalHTML
+  // Later this can be replaced with LLM-generated content based on originalDOM
   
-  // Extract some basic info from the original HTML for context
-  const originalTitle = extractTitle(originalHTML);
+  // Extract some basic info from the original DOM for context
+  const originalTitle = extractTitleFromDOM(originalDOM);
   const originalDomain = window.location.hostname;
   
   // LLM will generate clean HTML using retro classes - no inline styles
@@ -158,17 +158,17 @@ function wrapForSideBySide(generatedHTML) {
 }
 
 /**
- * Extracts the title from HTML content
+ * Extracts the title from DOM object
  * 
- * @param {string} html - HTML content to extract title from
+ * @param {Document} dom - DOM object to extract title from
  * @returns {string} Extracted title or fallback text
  */
-function extractTitle(html) {
+function extractTitleFromDOM(dom) {
   try {
-    // Try to extract title from the original HTML
-    const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-    if (titleMatch && titleMatch[1]) {
-      return titleMatch[1].trim();
+    // Try to get title from DOM object
+    const titleElement = dom.querySelector('title');
+    if (titleElement && titleElement.textContent) {
+      return titleElement.textContent.trim();
     }
     
     // Fallback: try to get current document title
@@ -183,17 +183,18 @@ function extractTitle(html) {
 }
 
 /**
- * Gets the original HTML content of the page
+ * Gets the original DOM object of the page
  * 
- * @returns {string} The original HTML content
+ * @returns {Document} The original DOM object
  */
-function getOriginalHTML() {
+function getOriginalDOM() {
   try {
-    // Return the full document HTML
-    return document.documentElement.outerHTML;
+    // Clone the document to avoid modifying the original
+    return document.cloneNode(true);
   } catch (error) {
-    console.warn('Could not extract original HTML:', error);
-    return document.body.innerHTML || "";
+    console.warn('Could not clone original DOM:', error);
+    // Fallback: return the actual document (be careful with modifications)
+    return document;
   }
 }
 
@@ -203,15 +204,15 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     generatePageHTML,
     wrapForSideBySide,
-    extractTitle,
-    getOriginalHTML
+    extractTitleFromDOM,
+    getOriginalDOM
   };
 } else {
   // Browser environment - attach to window
   window.HTMLGenerator = {
     generatePageHTML,
     wrapForSideBySide,
-    extractTitle,
-    getOriginalHTML
+    extractTitleFromDOM,
+    getOriginalDOM
   };
 }

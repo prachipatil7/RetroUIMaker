@@ -89,11 +89,11 @@ class DOMToggleExtension {
     this.generatedContentDiv.id = 'generated-content-overlay';
     this.generatedContentDiv.className = 'generated-content-overlay hidden';
     
-    // Get the original HTML content
-    const originalHTML = window.HTMLGenerator.getOriginalHTML();
+    // Get the original DOM object
+    const originalDOM = window.HTMLGenerator.getOriginalDOM();
     
     // Generate clean HTML page (what LLM would generate)
-    const cleanGeneratedHTML = window.HTMLGenerator.generatePageHTML(originalHTML);
+    const cleanGeneratedHTML = window.HTMLGenerator.generatePageHTML(originalDOM);
     
     // Wrap it for side-by-side display
     const wrappedHTML = window.HTMLGenerator.wrapForSideBySide(cleanGeneratedHTML);
