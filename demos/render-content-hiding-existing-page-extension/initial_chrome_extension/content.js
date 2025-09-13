@@ -129,11 +129,11 @@ class DOMToggleExtension {
     
     // Generate clean HTML page using async LLM pipeline
     try {
-      this.generatedHtml = await window.HTMLGenerator.generatePageHTML(originalDOM, this.currentIntent, '');
+      this.generatedHtml = await window.HTMLGenerator.generatePageHTML(originalDOM, this.currentIntent, this.generatedHtml);
     } catch (error) {
       console.error('Error generating HTML:', error);
       // Fallback to static content
-      this.generatedHtml = window.HTMLGenerator.generateFallbackHTML(originalDOM);
+      this.generatedHtml = window.HTMLGenerator.generateFallbackHTML(originalDOM, this.currentIntent, this.generatedHtml);
     }
     
     // Wrap it for side-by-side display
