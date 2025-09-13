@@ -367,7 +367,7 @@ class LLMPatch {
    * @returns {string} System prompt
    */
   getSelectionSystemPrompt() {
-    return `You are an expert UI analyzer. Your task is to identify and extract ONLY the essential functional elements that users need to accomplish their goals on a website.
+    return `You are an expert UI analyzer. Your task is to identify and extract ONLY the essential functional elements that users need for navigation and core website functionality.
 
 CRITICAL RULES:
 1. Preserve the original hierarchy and structure of the DOM tree
@@ -376,15 +376,23 @@ CRITICAL RULES:
 4. Maintain parent-child relationships for context and grouping
 5. Output ONLY valid JSON following the exact Node schema provided
 6. Do not include any text outside the JSON response
+7. Analyze if the user intent is relevant to this website's primary purpose
+8. If intent is unrelated to the website, focus on general navigation and core functionality
+
+INTENT RELEVANCE ANALYSIS:
+- If the user intent appears unrelated to this website's primary purpose, ignore the specific intent
+- If the intent is relevant to this website, use it to guide your selection
+- When uncertain, prioritize general navigation and core functionality
 
 ESSENTIAL ELEMENTS TO KEEP:
-- Primary search inputs and search buttons
-- Main navigation menus and links
-- Login/signup forms and buttons
+- Primary search inputs and search buttons (main search functionality)
+- Main navigation menus and navigation links
+- Login/signup forms and authentication buttons
 - Primary call-to-action buttons
-- Form inputs for core functionality (checkout, contact, etc.)
-- Content areas that directly serve the user's purpose
-- Essential navigation breadcrumbs
+- Form inputs for core website functionality
+- Key content areas that represent the main purpose of the site
+- Navigation breadcrumbs and site structure elements
+- Essential navigation elements for moving around the site
 
 ELEMENTS TO REMOVE:
 - Advertisements and promotional content
@@ -397,7 +405,7 @@ ELEMENTS TO REMOVE:
 - Loading spinners and decorative elements
 - Analytics and tracking scripts
 
-Remember: Extract only what users actually NEED to use the website's core functionality.`;
+Remember: Extract only what users actually NEED for basic navigation and core website functionality, regardless of specific intent if it's unrelated to the site.`;
   }
 
   /**
@@ -464,6 +472,9 @@ Remember: Create functional HTML that lets users accomplish their goals, not dec
     try {
       const apiKey = await this.getApiKey();
       
+      // Extract URL from the original DOM
+      const url = originalDOM.location ? originalDOM.location.href : window.location.href;
+      
       // Use existing LLMIntegration to serialize DOM
       const llmIntegration = new window.LLMIntegration();
       const fullDomJson = llmIntegration.buildDomJson(originalDOM);
@@ -486,7 +497,7 @@ Remember: Create functional HTML that lets users accomplish their goals, not dec
         };
       }
       
-      const prompt = this.buildSelectionPrompt(preTrimmedDom, intent);
+      const prompt = this.buildSelectionPrompt(preTrimmedDom, intent, url);
       
       const response = await this.makeApiRequest(apiKey, prompt, 'selection');
       const data = await response.json();
@@ -836,9 +847,10 @@ ${bodyInnerHTML}
    * Build selection prompt
    * @param {Object} domJson - DOM JSON
    * @param {string} intent - User intent
+   * @param {string} url - The URL of the current webpage
    * @returns {string} Formatted prompt
    */
-  buildSelectionPrompt(domJson, intent) {
+  buildSelectionPrompt(domJson, intent, url = '') {
     // Estimate token count and truncate if needed
     const domString = JSON.stringify(domJson, null, 2);
     const estimatedTokens = Math.ceil(domString.length / 4); // Rough estimation
@@ -846,26 +858,37 @@ ${bodyInnerHTML}
     if (estimatedTokens > 15000) { // If too large, truncate further
       console.warn(`DOM too large (${estimatedTokens} tokens), truncating further`);
       const truncatedDom = this.truncateDomJson(domJson, 30); // Further reduce nodes
-      return this.buildSelectionPrompt(truncatedDom, intent);
+      return this.buildSelectionPrompt(truncatedDom, intent, url);
     }
     
-    return `Extract ONLY the essential functional elements for user intent: "${intent}"
+    return `Extract ONLY the essential functional elements for navigation and core website functionality.
 
-Focus on CORE FUNCTIONALITY:
-- Search inputs and buttons
-- Main navigation menus
-- Login/signup forms
+WEBSITE CONTEXT:
+- Current URL: "${url}"
+- This helps determine the website's primary purpose and functionality
+
+INTENT ANALYSIS:
+- User intent: "${intent}"
+- If the intent appears unrelated to this website's primary purpose (e.g., "look at past Amazon orders" on Google.com), IGNORE the specific intent
+- If the intent is relevant to this website, use it to guide selection
+- When in doubt, focus on general navigation and core functionality
+
+CORE FUNCTIONALITY TO EXTRACT:
+- Search inputs and search buttons (primary search functionality)
+- Main navigation menus and navigation links
+- Login/signup forms and authentication buttons
 - Primary call-to-action buttons
-- Essential form inputs
-- Key content areas
+- Essential form inputs for core website functions
+- Key content areas that represent the main purpose of the site
+- Navigation breadcrumbs and site structure elements
 
-Remove: ads, social widgets, decorative elements, footer text, cookie banners
+REMOVE: ads, social widgets, decorative elements, footer text, cookie banners
 
 Schema: {tag, id, classes[], role, name, type, aria{}, label, text, href, value, visible, bbox{x,y,w,h}, selector, isInteractive, isNavigationCandidate, children[]}
 
 DOM_TREE = ${domString}
 
-Return filtered JSON with only the essential elements users need to accomplish their goals.`;
+Return filtered JSON with only the essential elements users need for basic navigation and core website functionality. Do not create any new elements or modify the existing elements! Only return elements that exist in the DOM. No hallucinations or creative liberties.`;
   }
 
   /**
