@@ -24,7 +24,7 @@ async function generatePageHTML(originalDOM, intent, old_html) {
 
     // Stage 1: Select relevant DOM elements based on intent
     const { filteredDomJson } = await window.LLMPatch.selectRelevantDomElements(originalDOM, intent || '');
-    
+    console.log('Filtered DOM JSON:', filteredDomJson);
     // Stage 2: Create and apply HTML patch
     const patch = await window.LLMPatch.createHtmlPatchFromSelection({ 
       selectedDom: filteredDomJson, 
@@ -32,6 +32,7 @@ async function generatePageHTML(originalDOM, intent, old_html) {
       intent: intent || '' 
     });
     
+    console.log('Patch:', patch);
     // Apply the patch to get updated HTML
     const updatedHtml = window.LLMPatch.applyHtmlPatch(old_html || '', patch);
     console.log('Updated HTML:', updatedHtml);

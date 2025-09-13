@@ -9,7 +9,7 @@
 class LLMPatch {
   constructor() {
     this.apiEndpoint = 'https://api.openai.com/v1/chat/completions';
-    this.model = 'gpt-4o'; // Using GPT-4o for both selection and patching
+    this.model = 'gpt-4.1'; // Using 4.1 for both selection and patching
     this.apiKey = null;
   }
 
@@ -84,7 +84,7 @@ class LLMPatch {
               }
             ],
             response_format: { type: "json_object" },
-            max_tokens: type === 'selection' ? 10000 : 10000,
+            max_tokens: type === 'selection' ? 8000 : 8000, // Reduced to prevent TPM limits
             temperature: type === 'selection' ? 0.1 : 0.2
           })
         });
@@ -92,7 +92,7 @@ class LLMPatch {
         if (response.status === 429) {
           // Rate limited - wait and retry
           const retryAfter = response.headers.get('retry-after');
-          const delay = retryAfter ? parseInt(retryAfter) * 1000 : baseDelay * Math.pow(2, attempt);
+          const delay = retryAfter ? parseInt(retryAfter) * 30000 : baseDelay * Math.pow(2, attempt);
           
           console.warn(`Rate limited. Waiting ${delay}ms before retry ${attempt + 1}/${maxRetries}`);
           await this.sleep(delay);
@@ -131,24 +131,37 @@ class LLMPatch {
    * @returns {string} System prompt
    */
   getSelectionSystemPrompt() {
-    return `You are an expert UI information architect. Your task is to filter a DOM Tree JSON to include only elements relevant to the user's intent.
+    return `You are an expert UI analyzer. Your task is to identify and extract ONLY the essential functional elements that users need to accomplish their goals on a website.
 
 CRITICAL RULES:
 1. Preserve the original hierarchy and structure of the DOM tree
 2. Keep ALL original selector values - do not modify or invent new selectors
-3. Remove elements that are not relevant to the user's intent
+3. Focus on CORE FUNCTIONALITY, not styling or decoration
 4. Maintain parent-child relationships for context and grouping
 5. Output ONLY valid JSON following the exact Node schema provided
 6. Do not include any text outside the JSON response
 
-INTENT-BASED FILTERING:
-- Focus on elements that directly serve the user's stated intent
-- Keep navigation elements that help achieve the intent
-- Keep form elements and interactive controls relevant to the intent
-- Keep content sections that support the intent
-- Remove decorative elements, ads, and unrelated content
+ESSENTIAL ELEMENTS TO KEEP:
+- Primary search inputs and search buttons
+- Main navigation menus and links
+- Login/signup forms and buttons
+- Primary call-to-action buttons
+- Form inputs for core functionality (checkout, contact, etc.)
+- Content areas that directly serve the user's purpose
+- Essential navigation breadcrumbs
 
-Remember: The goal is to create a focused interface that preserves all essential elements for the user's specific intent.`;
+ELEMENTS TO REMOVE:
+- Advertisements and promotional content
+- Social media widgets and share buttons
+- Footer copyright text and legal links
+- Decorative images and icons
+- Cookie banners and popups
+- Sidebar recommendations
+- Comments sections (unless core to the purpose)
+- Loading spinners and decorative elements
+- Analytics and tracking scripts
+
+Remember: Extract only what users actually NEED to use the website's core functionality.`;
   }
 
   /**
@@ -156,15 +169,15 @@ Remember: The goal is to create a focused interface that preserves all essential
    * @returns {string} System prompt
    */
   getPatchSystemPrompt() {
-    return `You are an expert HTML patching system. Your task is to create minimal, structured patches to transform existing HTML based on selected DOM elements and user intent.
+    return `You are an expert HTML generator. Your task is to create clean, functional HTML that shows ONLY the essential elements users need from a website.
 
 CRITICAL RULES:
 1. Output ONLY valid JSON following the exact patch schema
 2. Use CSS selectors that exist in the target HTML
-3. Make minimal changes - only what's necessary
-4. Preserve existing structure when possible
-5. Use retro CSS classes for new elements
-6. Ensure patches are idempotent
+3. Create clean, minimal HTML with NO styling classes
+4. Focus on FUNCTIONALITY, not appearance
+5. Preserve original element attributes (id, name, type, etc.)
+6. Make elements easily clickable and usable
 
 PATCH SCHEMA:
 {
@@ -180,16 +193,21 @@ PATCH SCHEMA:
   ]
 }
 
-RETRO CSS CLASSES AVAILABLE:
-- .retro-window, .retro-window-header, .retro-window-content
-- .retro-button, .retro-input, .retro-select, .retro-textarea
-- .retro-panel, .retro-groupbox, .retro-toolbar
-- .retro-title, .retro-subtitle, .retro-text
-- .retro-form-row, .retro-form-label, .retro-form-input
-- .retro-listbox, .retro-list-item
-- .retro-table, .retro-dialog
-- .retro-menubar, .retro-menu-item
-- .retro-statusbar, .retro-progressbar`;
+HTML GENERATION RULES:
+- Use semantic HTML tags (form, input, button, nav, ul, li, etc.)
+- Preserve original input types, names, and values
+- Keep original href attributes for links
+- Maintain form structure and action attributes
+- Use simple, clean markup without CSS classes
+- Focus on making elements functional, not pretty
+
+EXAMPLES:
+- Google: Show search input + search button
+- Amazon: Show main nav + search + category menu
+- E-commerce: Show search + filters + product grid
+- News: Show main navigation + article headlines
+
+Remember: Create functional HTML that lets users accomplish their goals, not decorative layouts.`;
   }
 
   /**
@@ -199,23 +217,37 @@ RETRO CSS CLASSES AVAILABLE:
    * @returns {Promise<Object>} Filtered DOM JSON and selected selectors
    */
   async selectRelevantDomElements(originalDOM, intent) {
-    const apiKey = await this.getApiKey();
-    
-    // Use existing LLMIntegration to serialize DOM
-    const llmIntegration = new window.LLMIntegration();
-    const fullDomJson = llmIntegration.buildDomJson(originalDOM);
-    
-    // Pre-trim to reduce token usage - keep interactive and structural elements
-    const preTrimmedDom = this.preTrimDom(fullDomJson);
-    
-    const prompt = this.buildSelectionPrompt(preTrimmedDom, intent);
-    
     try {
-      const response = await this.makeApiRequest(apiKey, prompt, 'selection');
+      const apiKey = await this.getApiKey();
       
+      // Use existing LLMIntegration to serialize DOM
+      const llmIntegration = new window.LLMIntegration();
+      const fullDomJson = llmIntegration.buildDomJson(originalDOM);
+      
+      // Pre-trim to reduce token usage - keep interactive and structural elements
+      const preTrimmedDom = this.preTrimDom(fullDomJson);
+      
+      // Check if still too large for API
+      const domString = JSON.stringify(preTrimmedDom, null, 2);
+      const estimatedTokens = Math.ceil(domString.length / 4);
+      
+      if (estimatedTokens > 20000) {
+        console.warn(`DOM still too large (${estimatedTokens} tokens), using local filtering only`);
+        const llmIntegration = new window.LLMIntegration();
+        const filtered = llmIntegration.localFilterImportantElements(preTrimmedDom);
+        console.log('Filtered DOM JSON:', filtered);
+        return {
+          filteredDomJson: filtered,
+          selectedSelectors: this.extractSelectors(filtered)
+        };
+      }
+      
+      const prompt = this.buildSelectionPrompt(preTrimmedDom, intent);
+      
+      const response = await this.makeApiRequest(apiKey, prompt, 'selection');
       const data = await response.json();
       const result = JSON.parse(data.choices[0].message.content);
-      
+      console.log('Filtered DOM JSON:', result);
       return {
         filteredDomJson: result.filtered_dom_tree || result,
         selectedSelectors: this.extractSelectors(result.filtered_dom_tree || result)
@@ -224,7 +256,10 @@ RETRO CSS CLASSES AVAILABLE:
       console.error('Error selecting relevant DOM elements:', error);
       // Fallback to local filtering
       const llmIntegration = new window.LLMIntegration();
+      const fullDomJson = llmIntegration.buildDomJson(originalDOM);
+      const preTrimmedDom = this.preTrimDom(fullDomJson);
       const filtered = llmIntegration.localFilterImportantElements(preTrimmedDom);
+      console.log('Filtered DOM JSON:', filtered);
       return {
         filteredDomJson: filtered,
         selectedSelectors: this.extractSelectors(filtered)
@@ -346,42 +381,183 @@ ${bodyInnerHTML}
   }
 
   /**
-   * Pre-trim DOM to reduce token usage
+   * Pre-trim DOM to extract only functional elements (inputs, buttons, important text)
    * @param {Object} domJson - Full DOM JSON
-   * @returns {Object} Pre-trimmed DOM JSON
+   * @returns {Object} Pre-trimmed DOM JSON with only functional elements
    */
   preTrimDom(domJson) {
-    const filterNode = (node) => {
-      // Keep if interactive, navigation candidate, or structural
-      if (node.isInteractive || node.isNavigationCandidate) {
-        return {
-          ...node,
-          children: node.children.map(filterNode).filter(Boolean)
-        };
-      }
-      
-      // Keep structural elements
-      const structuralTags = ['html', 'body', 'main', 'section', 'article', 'header', 'nav', 'footer', 'form'];
-      if (structuralTags.includes(node.tag)) {
-        return {
-          ...node,
-          children: node.children.map(filterNode).filter(Boolean)
-        };
-      }
-      
-      // Keep if has important children
-      const filteredChildren = node.children.map(filterNode).filter(Boolean);
-      if (filteredChildren.length > 0) {
-        return {
-          ...node,
-          children: filteredChildren
-        };
-      }
-      
-      return null;
-    };
+    const functionalElements = [];
     
-    return filterNode(domJson);
+    // Find the body element
+    const bodyElement = this.findBodyElement(domJson);
+    if (!bodyElement) {
+      console.warn('No body element found');
+      return domJson;
+    }
+    
+    // Extract functional elements from body
+    this.extractFunctionalElements(bodyElement, functionalElements);
+    
+    console.log(`Extracted ${functionalElements.length} functional elements:`, functionalElements);
+    
+    // Create a minimal DOM structure with just the functional elements
+    return {
+      tag: 'html',
+      children: [{
+        tag: 'body',
+        children: functionalElements
+      }]
+    };
+  }
+
+  /**
+   * Find the body element in the DOM tree
+   * @param {Object} domJson - DOM JSON
+   * @returns {Object|null} Body element or null
+   */
+  findBodyElement(domJson) {
+    if (domJson.tag === 'body') {
+      return domJson;
+    }
+    
+    if (domJson.children) {
+      for (const child of domJson.children) {
+        const body = this.findBodyElement(child);
+        if (body) return body;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * Extract functional elements (inputs, buttons, important text) from a node
+   * @param {Object} node - DOM node
+   * @param {Array} functionalElements - Array to store functional elements
+   */
+  extractFunctionalElements(node, functionalElements) {
+    if (!node || !node.children) return;
+    
+    for (const child of node.children) {
+      // Check if this is a functional element
+      if (this.isFunctionalElement(child)) {
+        functionalElements.push({
+          ...child,
+          children: [] // Don't include children for functional elements
+        });
+      }
+      
+      // Recursively check children
+      this.extractFunctionalElements(child, functionalElements);
+    }
+  }
+
+  /**
+   * Check if a node is a functional element
+   * @param {Object} node - DOM node
+   * @returns {boolean} True if functional
+   */
+  isFunctionalElement(node) {
+    // Exclude non-functional elements first
+    const excludeTags = ['style', 'script', 'meta', 'link', 'title', 'head', 'html', 'body'];
+    if (excludeTags.includes(node.tag)) {
+      return false;
+    }
+    
+    // Input elements (always functional)
+    if (node.tag === 'input' || node.tag === 'textarea' || node.tag === 'select') {
+      return true;
+    }
+    
+    // Button elements (always functional)
+    if (node.tag === 'button') {
+      return true;
+    }
+    
+    // Links with href (functional)
+    if (node.tag === 'a' && node.href && node.href !== '#') {
+      return true;
+    }
+    
+    // Form elements (functional)
+    if (node.tag === 'form') {
+      return true;
+    }
+    
+    // Elements with specific roles that are functional
+    if (node.role && ['button', 'link', 'search', 'navigation', 'combobox', 'textbox'].includes(node.role)) {
+      return true;
+    }
+    
+    // Important text elements (headings, labels, important text)
+    if (this.isImportantText(node)) {
+      return true;
+    }
+    
+    // Navigation containers
+    if (node.tag === 'nav' || node.role === 'navigation') {
+      return true;
+    }
+    
+    // Interactive spans/divs only if they have meaningful content
+    if ((node.tag === 'span' || node.tag === 'div') && node.role === 'button' && node.text && node.text.trim().length > 0) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Check if a node contains important text
+   * @param {Object} node - DOM node
+   * @returns {boolean} True if important text
+   */
+  isImportantText(node) {
+    // Exclude style and script tags
+    if (['style', 'script', 'meta', 'link'].includes(node.tag)) {
+      return false;
+    }
+    
+    // Headings (always important)
+    if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(node.tag)) {
+      return true;
+    }
+    
+    // Labels (always important)
+    if (node.tag === 'label') {
+      return true;
+    }
+    
+    // Text with meaningful content
+    if (node.text && node.text.trim().length > 2) {
+      const text = node.text.trim();
+      const textLower = text.toLowerCase();
+      
+      // Important keywords that indicate functional text
+      const importantKeywords = [
+        'search', 'login', 'sign in', 'sign up', 'register', 'menu', 'nav', 'navigation',
+        'submit', 'buy', 'add to cart', 'cart', 'checkout', 'create', 'save', 'delete', 
+        'edit', 'view', 'more', 'show', 'hide', 'filter', 'sort', 'browse', 'shop',
+        'home', 'about', 'contact', 'help', 'support', 'account', 'profile', 'settings'
+      ];
+      
+      // Check for important keywords
+      if (importantKeywords.some(keyword => textLower.includes(keyword))) {
+        return true;
+      }
+      
+      // Check for button-like text (short, action-oriented)
+      if (text.length <= 20 && /^(go|click|tap|press|enter|ok|yes|no|cancel|close|open|start|stop|play|pause)$/i.test(text)) {
+        return true;
+      }
+      
+      // Check for longer meaningful text (but not too long)
+      if (text.length >= 5 && text.length <= 100 && !/^[0-9\s\-_.,!?]+$/.test(text)) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   /**
@@ -412,32 +588,58 @@ ${bodyInnerHTML}
    * @returns {string} Formatted prompt
    */
   buildSelectionPrompt(domJson, intent) {
-    return `Please filter this DOM tree JSON to keep only elements relevant to the user's intent: "${intent}"
+    // Estimate token count and truncate if needed
+    const domString = JSON.stringify(domJson, null, 2);
+    const estimatedTokens = Math.ceil(domString.length / 4); // Rough estimation
+    
+    if (estimatedTokens > 15000) { // If too large, truncate further
+      console.warn(`DOM too large (${estimatedTokens} tokens), truncating further`);
+      const truncatedDom = this.truncateDomJson(domJson, 30); // Further reduce nodes
+      return this.buildSelectionPrompt(truncatedDom, intent);
+    }
+    
+    return `Extract ONLY the essential functional elements for user intent: "${intent}"
 
-DOM_TREE_SCHEMA:
-{
-  "tag": "string (lowercase tag name)",
-  "id": "string | null",
-  "classes": "string[]",
-  "role": "string | null",
-  "name": "string | null",
-  "type": "string | null",
-  "aria": "object (aria-* attributes)",
-  "label": "string | null",
-  "text": "string (truncated to 200 chars)",
-  "href": "string | null",
-  "value": "string | null",
-  "visible": "boolean",
-  "bbox": {"x": "number", "y": "number", "width": "number", "height": "number"},
-  "selector": "string (robust CSS selector)",
-  "isInteractive": "boolean",
-  "isNavigationCandidate": "boolean",
-  "children": "Node[] (recursive)"
-}
+Focus on CORE FUNCTIONALITY:
+- Search inputs and buttons
+- Main navigation menus
+- Login/signup forms
+- Primary call-to-action buttons
+- Essential form inputs
+- Key content areas
 
-DOM_TREE = ${JSON.stringify(domJson, null, 2)}
+Remove: ads, social widgets, decorative elements, footer text, cookie banners
 
-Return the filtered DOM tree as JSON with the same schema, but with only the elements relevant to the intent preserved.`;
+Schema: {tag, id, classes[], role, name, type, aria{}, label, text, href, value, visible, bbox{x,y,w,h}, selector, isInteractive, isNavigationCandidate, children[]}
+
+DOM_TREE = ${domString}
+
+Return filtered JSON with only the essential elements users need to accomplish their goals.`;
+  }
+
+  /**
+   * Truncate DOM JSON to reduce token count
+   * @param {Object} domJson - DOM JSON
+   * @param {number} maxNodes - Maximum number of nodes
+   * @returns {Object} Truncated DOM JSON
+   */
+  truncateDomJson(domJson, maxNodes) {
+    let nodeCount = 0;
+    
+    const truncateNode = (node) => {
+      if (nodeCount >= maxNodes) {
+        return null;
+      }
+      
+      nodeCount++;
+      return {
+        ...node,
+        text: node.text ? node.text.substring(0, 20) : '',
+        children: node.children.slice(0, 2).map(truncateNode).filter(Boolean)
+      };
+    };
+    
+    return truncateNode(domJson);
   }
 
   /**
@@ -448,21 +650,21 @@ Return the filtered DOM tree as JSON with the same schema, but with only the ele
    * @returns {string} Formatted prompt
    */
   buildPatchPrompt(selectedDom, oldHtml, intent) {
-    const truncatedHtml = oldHtml.length > 5000 ? oldHtml.substring(0, 5000) + '...' : oldHtml;
+    const truncatedHtml = oldHtml.length > 2000 ? oldHtml.substring(0, 2000) + '...' : oldHtml;
+    const selectedDomString = JSON.stringify(selectedDom, null, 1);
     
-    return `Create a minimal HTML patch to transform the existing HTML based on the selected DOM elements and user intent: "${intent}"
+    // If still too large, truncate further
+    if (selectedDomString.length > 5000) {
+      const truncatedDom = this.truncateDomJson(selectedDom, 15);
+      return this.buildPatchPrompt(truncatedDom, oldHtml, intent);
+    }
+    
+    return `Create HTML patch for intent: "${intent}"
 
-SELECTED_DOM_ELEMENTS = ${JSON.stringify(selectedDom, null, 2)}
-
+SELECTED_DOM = ${selectedDomString}
 EXISTING_HTML = ${truncatedHtml}
 
-Generate a patch that:
-1. Uses the selected DOM elements to enhance the existing HTML
-2. Applies retro styling classes
-3. Maintains the user's intent
-4. Makes minimal changes to the existing structure
-
-Return the patch as JSON following the schema provided.`;
+Return JSON patch with operations: replace, append, prepend, remove, setAttribute, removeAttribute, replaceFullDocument.`;
   }
 
   /**

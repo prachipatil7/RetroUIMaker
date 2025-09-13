@@ -11,16 +11,16 @@ class LLMIntegration {
   constructor() {
     this.apiKey = null; // Will be set via configuration
     this.apiEndpoint = 'https://api.openai.com/v1/chat/completions';
-    this.model = 'gpt-4o'; // Using GPT-4o with vision capabilities
+    this.model = 'gpt-4.1'; // Using GPT-4.1 with vision capabilities
     this.filterModel = 'gpt-5'; // Using GPT-4 Turbo for reasoning tasks
   }
 
   /**
    * Configure the LLM API
    * @param {string} apiKey - OpenAI API key
-   * @param {string} model - Model to use (default: gpt-4o)
+   * @param {string} model - Model to use (default: gpt-4.1)
    */
-  configure(apiKey, model = 'gpt-4o') {
+  configure(apiKey, model = 'gpt-4.1') {
     this.apiKey = apiKey;
     this.model = model;
   }
@@ -630,7 +630,7 @@ FILTERED_DOM_TREE = ${JSON.stringify(filteredDomJson, null, 2)}
 Generate the body innerHTML only, using retro CSS classes and preserving all interactive element mappings.`
             }
           ],
-          max_tokens: 20000,
+          max_tokens: 10000,
           temperature: 0.2
         })
       });
@@ -685,7 +685,7 @@ Generate the body innerHTML only, using retro CSS classes and preserving all int
               ]
             }
           ],
-          max_tokens: 4000,
+          max_tokens: 10000,
           temperature: 0.3
         })
       });
@@ -742,6 +742,33 @@ RETRO CSS CLASSES AVAILABLE:
 CRITICAL: Every interactive element MUST have a data-sid attribute that matches the original element's ID. This is essential for action mapping.
 
 Generate a complete HTML page that represents a simplified, retro-styled version of this website.`;
+  }
+
+  /**
+   * Build HTML generation prompt for filtered DOM
+   * @param {Object} filteredDomJson - Filtered DOM JSON
+   * @returns {string} Formatted prompt
+   */
+  buildHtmlGenerationPrompt(filteredDomJson) {
+    return `Convert this filtered DOM tree into clean, functional HTML that shows only the essential elements users need:
+
+FILTERED_DOM_TREE = ${JSON.stringify(filteredDomJson, null, 2)}
+
+Generate clean HTML that:
+1. Preserves all original functionality (forms, buttons, links)
+2. Uses semantic HTML tags (form, input, button, nav, ul, li)
+3. Keeps original attributes (id, name, type, href, action)
+4. Focuses on CORE FUNCTIONALITY, not styling
+5. Makes elements easily clickable and usable
+6. Removes decorative elements and clutter
+
+Examples:
+- Google: Show search input + search button
+- Amazon: Show main nav + search + category menu  
+- E-commerce: Show search + filters + product grid
+- News: Show main navigation + article headlines
+
+Generate the body innerHTML only, focusing on what users actually need to use the website.`;
   }
 
   /**
