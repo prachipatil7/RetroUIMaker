@@ -152,6 +152,8 @@ class DOMToggleExtension {
     window.addEventListener('message', (event) => {
       if (event.data.type === 'CLICK_ELEMENT') {
         this.clickElement(event.data.selector);
+      } else if (event.data.type === 'CHANGE_ELEMENT') {
+        this.changeElement(event.data.selector, event.data.value);
       }
 
       this.refreshContent();
@@ -191,6 +193,48 @@ class DOMToggleExtension {
       }
     } catch (error) {
       console.error('Error clicking element:', error);
+    }
+  }
+
+  changeElement(selector, value) {
+    try {
+      if (this.originalIframe && this.originalIframe.contentDocument) {
+        // Try to find and update the element in the original iframe
+        const element = this.originalIframe.contentDocument.querySelector(selector);
+        if (element) {
+          console.log('Updating element in original iframe:', selector, 'with value:', value);
+          element.value = value;
+          // Trigger change event to notify other scripts
+          element.dispatchEvent(new Event('change', { bubbles: true }));
+          element.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          console.warn('Element not found in original iframe:', selector);
+          // Fallback: try to update in the main document
+          const mainElement = document.querySelector(selector);
+          if (mainElement) {
+            console.log('Updating element in main document:', selector, 'with value:', value);
+            mainElement.value = value;
+            mainElement.dispatchEvent(new Event('change', { bubbles: true }));
+            mainElement.dispatchEvent(new Event('input', { bubbles: true }));
+          } else {
+            console.warn('Element not found in main document either:', selector);
+          }
+        }
+      } else {
+        console.warn('Original iframe not available, trying main document');
+        // Fallback: try to update in the main document
+        const mainElement = document.querySelector(selector);
+        if (mainElement) {
+          console.log('Updating element in main document:', selector, 'with value:', value);
+          mainElement.value = value;
+          mainElement.dispatchEvent(new Event('change', { bubbles: true }));
+          mainElement.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          console.warn('Element not found:', selector);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating element:', error);
     }
   }
 

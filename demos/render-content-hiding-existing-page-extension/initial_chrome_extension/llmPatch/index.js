@@ -687,7 +687,7 @@ ${bodyInnerHTML}
     console.log(`Extracted ${functionalElements.length} functional elements`);
     
     // Filter each element to only include the specified keys
-    const keysToKeep = ['tag', 'id', 'label', 'text', 'selector', 'isInteractive', 'isNavigationCandidate'];
+    const keysToKeep = ['tag', 'id', 'label', 'text', 'selector', 'type', 'isInteractive', 'isNavigationCandidate'];
     
     const filteredElements = functionalElements.map(element => {
       const filteredElement = {};

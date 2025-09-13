@@ -60,17 +60,76 @@ async function generatePageHTML(originalDOM, intent, old_html) {
     const copiedElements = window.createCopy(filteredDomJson);
     console.log('Copied elements:', copiedElements);
     
-    // Stage 2: Create and apply HTML patch against base template using copied elements
-    const patch = await window.LLMPatch.createHtmlPatchFromSelection({ 
-      selectedDom: copiedElements, 
-      oldHtml: old_html, 
-      intent: intent || '' 
+    // Stage 2: Assemble copied elements into HTML with preserved event handlers
+    let elementsHTML = '';
+    
+    // Convert each element to HTML string (without inline handlers to avoid CSP issues)
+    copiedElements.forEach(element => {
+      // Don't add inline onclick/onchange handlers - we'll add them via script instead
+      elementsHTML += element.outerHTML + '\n';
     });
     
-    console.log('Patch:', patch);
-    // Apply the patch to get updated HTML
-    const updatedHtml = window.LLMPatch.applyHtmlPatch(old_html, patch);
-    console.log('Updated HTML:', updatedHtml);
+    // Create complete HTML structure
+    const updatedHtml = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Generated UI - ${extractTitleFromDOM(originalDOM)}</title>
+        <link rel="stylesheet" href="${chrome.runtime.getURL('retro-theme.css')}">
+      </head>
+      <body class="retro-body">
+        <div class="retro-window">
+          <div class="retro-window-header">
+            <span>Generated UI - ${intent || 'Default'}</span>
+          </div>
+          <div class="retro-window-content retro-container">
+            ${elementsHTML}
+          </div>
+        </div>
+        <script>
+          // Add event listeners after DOM is loaded (CSP-compliant)
+          document.addEventListener('DOMContentLoaded', function() {
+            // Add click listeners to interactive elements
+            const clickableElements = document.querySelectorAll('[data-selector]');
+            clickableElements.forEach(element => {
+              const tagName = element.tagName.toLowerCase();
+              const inputType = element.type;
+              
+              // Add click listeners for buttons, links, and submit/button inputs
+              if (tagName === 'button' || tagName === 'a' || 
+                  (tagName === 'input' && (inputType === 'button' || inputType === 'submit'))) {
+                element.addEventListener('click', function(e) {
+                  e.preventDefault();
+                  const selector = this.getAttribute('data-selector');
+                  parent.postMessage({
+                    type: 'CLICK_ELEMENT',
+                    selector: selector
+                  }, '*');
+                  console.log('CLICK_ELEMENT', selector);
+                });
+              }
+              
+              // Add change listeners for inputs and textareas
+              if (tagName === 'input' || tagName === 'textarea') {
+                element.addEventListener('change', function() {
+                  const selector = this.getAttribute('data-selector');
+                  parent.postMessage({
+                    type: 'CHANGE_ELEMENT',
+                    selector: selector,
+                    value: this.value
+                  }, '*');
+                  console.log('CHANGE_ELEMENT', selector, this.value);
+                });
+              }
+            });
+          });
+        </script>
+      </body>
+      </html>
+    `;
+    console.log('Assembled HTML:', updatedHtml);
     
     // Cache the result
     contentCache.set(cacheKey, updatedHtml);
