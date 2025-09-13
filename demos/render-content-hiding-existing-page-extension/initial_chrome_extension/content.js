@@ -141,9 +141,10 @@ class DOMToggleExtension {
         this.setIntent(request.intent);
         sendResponse({ success: true, intent: this.currentIntent });
       } else if (request.action === 'regenerateContent') {
-        this.regenerateContent();
+        this.generateContent();
         sendResponse({ success: true });
       }
+
       return true; // Indicates we will send a response asynchronously
     });
 
@@ -152,6 +153,9 @@ class DOMToggleExtension {
       if (event.data.type === 'CLICK_ELEMENT') {
         this.clickElement(event.data.selector);
       }
+
+      this.refreshContent();
+      // this.generateContent();
     });
   }
 
@@ -318,6 +322,31 @@ class DOMToggleExtension {
     console.log('Intent set to:', this.currentIntent);
   }
 
+  /**
+   * Refresh the original iframe content with current page state
+   */
+  refreshContent() {
+    console.log('Refreshing iframe to show updated state...');
+    
+    // Give the original action time to complete
+    setTimeout(() => {
+      try {
+        // If the iframe is currently visible, reload it to show updates
+        if (this.originalIframe && !this.originalIframe.classList.contains('hidden')) {
+          // Force reload by adding a timestamp parameter
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.set('_refresh', Date.now().toString());
+          this.originalIframe.src = currentUrl.toString();
+          
+          console.log('Successfully refreshed iframe to show updated state');
+        } else {
+          console.log('Iframe not visible, no refresh needed');
+        }
+      } catch (error) {
+        console.error('Error refreshing iframe:', error);
+      }
+    }, 500); // Wait 500ms for the original action to complete
+  }
   /**
    * Regenerate content with current intent
    */
