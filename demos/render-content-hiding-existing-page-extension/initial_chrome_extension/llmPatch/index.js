@@ -87,13 +87,31 @@ class LLMPatch {
   }
 
   /**
-   * Make API request with retry logic and rate limiting handling
+   * Make API request with retry logic, rate limiting handling, and caching
    * @param {string} apiKey - API key
    * @param {string} prompt - User prompt
    * @param {string} type - Request type ('selection' or 'patch')
-   * @returns {Promise<Response>} API response
+   * @returns {Promise<Response>} API response (real or cached)
    */
   async makeApiRequest(apiKey, prompt, type) {
+    // Generate cache key based on input parameters
+    const cacheKey = this.generateCacheKey(apiKey, prompt, type);
+    
+    // Check cache first with exact prompt verification
+    const cachedResponse = this.getCacheResponse(cacheKey, prompt, type);
+    if (cachedResponse) {
+      console.log('Using cached API response');
+      // Return a mock Response object that matches the expected interface
+      return {
+        ok: true,
+        status: 200,
+        statusText: 'OK (Cached)',
+        headers: new Headers(),
+        json: async () => cachedResponse
+      };
+    }
+
+    console.log('Making new API request (not cached)');
     const maxRetries = 3;
     const baseDelay = 1000; // 1 second base delay
     
@@ -120,8 +138,8 @@ class LLMPatch {
               }
             ],
             response_format: { type: "json_object" },
-            max_tokens: type === 'selection' ? 8000 : 8000, // Reduced to prevent TPM limits
-            temperature: type === 'selection' ? 0.1 : 0.2
+            max_completion_tokens: type === 'selection' ? 8000 : 8000, // Reduced to prevent TPM limits
+            // temperature: type === 'selection' ? 0.1 : 0.2
           })
         });
 
@@ -137,6 +155,17 @@ class LLMPatch {
 
         if (!response.ok) {
           throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        }
+
+        // Cache successful response
+        try {
+          // Clone the response to avoid consuming it
+          const responseClone = response.clone();
+          const responseData = await responseClone.json();
+          this.storeCacheResponse(cacheKey, responseData, prompt, type);
+        } catch (cacheError) {
+          console.warn('Failed to cache response:', cacheError);
+          // Continue with original response even if caching fails
         }
 
         return response;
@@ -160,6 +189,177 @@ class LLMPatch {
    */
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Generate a cache key for API requests
+   * @param {string} apiKey - API key
+   * @param {string} prompt - User prompt
+   * @param {string} type - Request type ('selection' or 'patch')
+   * @returns {string} Cache key
+   */
+  generateCacheKey(apiKey, prompt, type) {
+    // Create a hash of the API key for privacy (only use first 8 chars)
+    const apiKeyHash = apiKey.substring(0, 8);
+    
+    // Create a more robust hash of the prompt to minimize collisions
+    // Using a combination of djb2 hash algorithm with additional entropy
+    let promptHash = 5381; // djb2 initial value
+    for (let i = 0; i < prompt.length; i++) {
+      const char = prompt.charCodeAt(i);
+      promptHash = ((promptHash << 5) + promptHash) + char; // hash * 33 + char
+    }
+    
+    // Add string length as additional entropy to reduce collision probability
+    const lengthHash = prompt.length * 37; // multiply by prime
+    const combinedHash = Math.abs(promptHash ^ lengthHash); // XOR for final hash
+    
+    return `llm_cache_${type}_${apiKeyHash}_${combinedHash}`;
+  }
+
+  /**
+   * Store API response in localStorage cache
+   * @param {string} cacheKey - Cache key
+   * @param {Object} responseData - Response data to cache
+   * @param {string} prompt - Full prompt text for exact matching
+   * @param {string} type - Request type for filtering
+   */
+  storeCacheResponse(cacheKey, responseData, prompt, type) {
+    try {
+      const cacheEntry = {
+        data: responseData,
+        prompt: prompt,
+        type: type,
+        timestamp: Date.now(),
+        version: '1.1'
+      };
+      localStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
+      console.log(`Cached API response with key: ${cacheKey}`);
+    } catch (error) {
+      console.warn('Failed to store cache response:', error);
+    }
+  }
+
+  /**
+   * Retrieve API response from localStorage cache with exact prompt verification
+   * @param {string} cacheKey - Cache key (hash-based lookup)
+   * @param {string} prompt - Full prompt text for exact matching
+   * @param {string} type - Request type for additional verification
+   * @returns {Object|null} Cached response data or null if not found/expired/mismatched
+   */
+  getCacheResponse(cacheKey, prompt, type) {
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (!cached) {
+        return null;
+      }
+
+      const cacheEntry = JSON.parse(cached);
+      
+      // Check if cache entry has expected structure
+      if (!cacheEntry.data || !cacheEntry.timestamp || !cacheEntry.prompt) {
+        console.warn(`Invalid cache entry structure for key: ${cacheKey}`);
+        localStorage.removeItem(cacheKey);
+        return null;
+      }
+
+      // Check if cache is older than 24 hours (86400000 ms)
+      const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+      if (Date.now() - cacheEntry.timestamp > maxAge) {
+        console.log(`Cache expired for key: ${cacheKey}`);
+        localStorage.removeItem(cacheKey);
+        return null;
+      }
+
+      // CRITICAL: Verify exact prompt text match to prevent hash collisions
+      if (cacheEntry.prompt !== prompt) {
+        console.log(`Hash collision detected for key: ${cacheKey}. Cached prompt differs from requested prompt.`);
+        return null; // Hash collision - don't use this cache entry
+      }
+
+      // Additional verification: check type matches
+      if (cacheEntry.type !== type) {
+        console.warn(`Type mismatch for cache key: ${cacheKey}. Expected: ${type}, Found: ${cacheEntry.type}`);
+        return null;
+      }
+
+      console.log(`Retrieved cached response with verified prompt match for key: ${cacheKey}`);
+      return cacheEntry.data;
+    } catch (error) {
+      console.warn('Failed to retrieve cache response:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Clear all LLM cache entries from localStorage
+   * Useful for debugging or clearing stale cache
+   */
+  clearCache() {
+    try {
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('llm_cache_')) {
+          keysToRemove.push(key);
+        }
+      }
+      
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      console.log(`Cleared ${keysToRemove.length} cache entries`);
+      return keysToRemove.length;
+    } catch (error) {
+      console.warn('Failed to clear cache:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Get cache statistics
+   * @returns {Object} Cache statistics including count and total size
+   */
+  getCacheStats() {
+    try {
+      let count = 0;
+      let totalSize = 0;
+      const entries = [];
+      
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('llm_cache_')) {
+          const value = localStorage.getItem(key);
+          if (value) {
+            count++;
+            totalSize += value.length;
+            
+            try {
+              const entry = JSON.parse(value);
+              entries.push({
+                key,
+                timestamp: entry.timestamp,
+                age: Date.now() - entry.timestamp,
+                size: value.length,
+                type: entry.type || 'unknown',
+                promptLength: entry.prompt ? entry.prompt.length : 0,
+                version: entry.version || '1.0'
+              });
+            } catch (e) {
+              // Invalid JSON, will be cleaned up on next access
+            }
+          }
+        }
+      }
+      
+      return {
+        count,
+        totalSize,
+        totalSizeKB: Math.round(totalSize / 1024 * 100) / 100,
+        entries: entries.sort((a, b) => b.timestamp - a.timestamp) // Most recent first
+      };
+    } catch (error) {
+      console.warn('Failed to get cache stats:', error);
+      return { count: 0, totalSize: 0, totalSizeKB: 0, entries: [] };
+    }
   }
 
   /**
