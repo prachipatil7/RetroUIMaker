@@ -14,6 +14,12 @@
       "run_at": "document_end"
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["retro-theme.css"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "action": {
     "default_title": "DOM Toggle Extension"
   }

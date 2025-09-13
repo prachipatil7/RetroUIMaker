@@ -8,11 +8,12 @@
 
 /**
  * Generates HTML content based on the original DOM
+ * This function will be replaced with LLM-generated content
  * 
  * @param {string} originalHTML - The original HTML content of the page
- * @returns {string} Complete HTML string with inline CSS
+ * @returns {string} Clean HTML content without layout constraints
  */
-function generateOverlayHTML(originalHTML) {
+function generatePageHTML(originalHTML) {
   // For now, we'll create a static hello world page
   // Later this can be replaced with LLM-generated content based on originalHTML
   
@@ -20,116 +21,138 @@ function generateOverlayHTML(originalHTML) {
   const originalTitle = extractTitle(originalHTML);
   const originalDomain = window.location.hostname;
   
+  // LLM will generate clean HTML using retro classes - no inline styles
   return `
-    <div style="
-      min-height: 100vh;
-      width: 100%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
-      padding: 15px;
-      box-sizing: border-box;
-      overflow-y: auto;
-    ">
-      <div style="
-        text-align: center;
-        color: white;
-        background-color: rgba(255, 255, 255, 0.1);
-        padding: 30px 20px;
-        border-radius: 15px;
-        backdrop-filter: blur(15px);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        max-width: 100%;
-        width: 100%;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        margin-top: 60px;
-      ">
-        <h1 style="
-          font-size: 2.5rem;
-          margin: 0 0 20px 0;
-          font-weight: 700;
-          text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
-          background: linear-gradient(45deg, #ffffff, #f0f0f0);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        ">
-          Generated UI
-        </h1>
-        
-        <div style="
-          background-color: rgba(255, 255, 255, 0.1);
-          padding: 25px;
-          border-radius: 12px;
-          margin: 30px 0;
-          border-left: 4px solid rgba(255, 255, 255, 0.3);
-        ">
-          <h3 style="
-            font-size: 1.4rem;
-            margin: 0 0 15px 0;
-            color: #f0f0f0;
-            font-weight: 600;
-          ">
-            Original Page Context
-          </h3>
-          <p style="
-            font-size: 1.1rem;
-            line-height: 1.6;
-            margin: 10px 0;
-            color: #e0e0e0;
-          ">
-            <strong>Domain:</strong> ${originalDomain}
-          </p>
-          <p style="
-            font-size: 1.1rem;
-            line-height: 1.6;
-            margin: 10px 0;
-            color: #e0e0e0;
-          ">
-            <strong>Original Title:</strong> ${originalTitle}
-          </p>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Generated UI - ${originalTitle}</title>
+    </head>
+    <body class="retro-body">
+      <div class="retro-window">
+        <div class="retro-window-header">
+          <span>Generated Retro UI - ${originalTitle}</span>
+          <div>
+            <button class="retro-button" style="font-size: 10px; padding: 0 4px;">_</button>
+            <button class="retro-button" style="font-size: 10px; padding: 0 4px;">□</button>
+            <button class="retro-button" style="font-size: 10px; padding: 0 4px;">×</button>
+          </div>
         </div>
         
-        <p style="
-          font-size: 1.2rem;
-          line-height: 1.7;
-          margin: 20px 0;
-          color: #f5f5f5;
-          text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
-        ">
-          This is the generated UI displayed side-by-side with the original content.
-        </p>
-        
-        <p style="
-          font-size: 1rem;
-          line-height: 1.5;
-          margin: 15px 0;
-          color: #e0e0e0;
-          font-style: italic;
-        ">
-          Compare the original (left) with the generated content (right).
-        </p>
-        
-        <div style="
-          margin-top: 40px;
-          padding: 20px;
-          background-color: rgba(255, 255, 255, 0.05);
-          border-radius: 10px;
-          border: 1px dashed rgba(255, 255, 255, 0.2);
-        ">
-          <p style="
-            font-size: 0.95rem;
-            color: #cccccc;
-            margin: 0;
-            line-height: 1.5;
-          ">
-            🚀 <strong>Future Enhancement:</strong> This static content will be replaced with AI-generated HTML based on the original page content.
-          </p>
+        <div class="retro-window-content">
+          <div class="retro-menubar">
+            <span class="retro-menu-item">File</span>
+            <span class="retro-menu-item">Edit</span>
+            <span class="retro-menu-item">View</span>
+            <span class="retro-menu-item">Help</span>
+          </div>
+          
+          <div class="retro-toolbar">
+            <div class="retro-toolbar-button">📁</div>
+            <div class="retro-toolbar-button">💾</div>
+            <div class="retro-toolbar-separator"></div>
+            <div class="retro-toolbar-button">✂️</div>
+            <div class="retro-toolbar-button">📋</div>
+            <div class="retro-toolbar-button">📄</div>
+          </div>
+          
+          <h1 class="retro-title">Original Page Analysis</h1>
+          
+          <div class="retro-groupbox">
+            <div class="retro-groupbox-title">Page Information</div>
+            <div class="retro-form-row">
+              <label class="retro-form-label retro-label">Domain:</label>
+              <input type="text" class="retro-input retro-form-input" value="${originalDomain}" readonly>
+            </div>
+            <div class="retro-form-row">
+              <label class="retro-form-label retro-label">Title:</label>
+              <input type="text" class="retro-input retro-form-input" value="${originalTitle}" readonly>
+            </div>
+          </div>
+          
+          <div class="retro-panel">
+            <h2 class="retro-subtitle">Generated Content</h2>
+            <p class="retro-text">
+              This is a retro-styled interface generated from the original webpage content.
+              The LLM will create similar interfaces using the retro CSS classes.
+            </p>
+            
+            <div class="retro-form-row">
+              <button class="retro-button">Regenerate</button>
+              <button class="retro-button">Export</button>
+              <button class="retro-button retro-disabled" disabled>Advanced</button>
+            </div>
+          </div>
+          
+          <div class="retro-groupbox">
+            <div class="retro-groupbox-title">Sample Controls</div>
+            <div class="retro-form-row">
+              <input type="checkbox" class="retro-checkbox" id="sample1">
+              <label for="sample1" class="retro-label">Enable retro mode</label>
+            </div>
+            <div class="retro-form-row">
+              <input type="radio" class="retro-radio" name="style" id="win95">
+              <label for="win95" class="retro-label">Windows 95</label>
+              <input type="radio" class="retro-radio" name="style" id="win98" checked>
+              <label for="win98" class="retro-label">Windows 98</label>
+            </div>
+            <div class="retro-form-row">
+              <label class="retro-form-label retro-label">Theme:</label>
+              <select class="retro-select retro-form-input">
+                <option>Classic Gray</option>
+                <option>High Contrast</option>
+                <option>Desert</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="retro-progressbar">
+            <div class="retro-progressbar-fill" style="width: 75%;"></div>
+          </div>
+          <p class="retro-text" style="margin-top: 4px;">Processing: 75% complete</p>
         </div>
       </div>
+      
+      <div class="retro-statusbar">
+        Ready | ${new Date().toLocaleString()} | Generated from: ${originalDomain}
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Wraps the generated HTML with layout constraints for side-by-side view
+ * Injects the retro CSS into the generated HTML
+ * 
+ * @param {string} generatedHTML - Clean HTML from LLM or generatePageHTML
+ * @returns {string} HTML wrapped with side-by-side layout styling
+ */
+function wrapForSideBySide(generatedHTML) {
+  // Inject retro CSS into the HTML head
+  const htmlWithCSS = generatedHTML.replace(
+    '</head>',
+    `<link rel="stylesheet" href="${chrome.runtime.getURL('retro-theme.css')}"></head>`
+  );
+  
+  return `
+    <div class="generated-content-wrapper" style="
+      width: 100%;
+      height: 100vh;
+      overflow-y: auto;
+      box-sizing: border-box;
+    ">
+      <iframe 
+        style="
+          width: 100%;
+          height: 100%;
+          border: none;
+          background: #c0c0c0;
+        "
+        srcdoc="${htmlWithCSS.replace(/"/g, '&quot;')}"
+      ></iframe>
     </div>
   `;
 }
@@ -178,14 +201,16 @@ function getOriginalHTML() {
 if (typeof module !== 'undefined' && module.exports) {
   // Node.js environment
   module.exports = {
-    generateOverlayHTML,
+    generatePageHTML,
+    wrapForSideBySide,
     extractTitle,
     getOriginalHTML
   };
 } else {
   // Browser environment - attach to window
   window.HTMLGenerator = {
-    generateOverlayHTML,
+    generatePageHTML,
+    wrapForSideBySide,
     extractTitle,
     getOriginalHTML
   };

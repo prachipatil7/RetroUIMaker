@@ -65,11 +65,14 @@ class DOMToggleExtension {
     // Get the original HTML content
     const originalHTML = window.HTMLGenerator.getOriginalHTML();
     
-    // Generate the overlay HTML using the HTML generator
-    const generatedHTML = window.HTMLGenerator.generateOverlayHTML(originalHTML);
+    // Generate clean HTML page (what LLM would generate)
+    const cleanGeneratedHTML = window.HTMLGenerator.generatePageHTML(originalHTML);
     
-    // Set the generated HTML as the content
-    this.generatedContentDiv.innerHTML = generatedHTML;
+    // Wrap it for side-by-side display
+    const wrappedHTML = window.HTMLGenerator.wrapForSideBySide(cleanGeneratedHTML);
+    
+    // Set the wrapped HTML as the content
+    this.generatedContentDiv.innerHTML = wrappedHTML;
     document.body.appendChild(this.generatedContentDiv);
   }
 
