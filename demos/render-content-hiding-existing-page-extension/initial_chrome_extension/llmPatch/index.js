@@ -9,8 +9,44 @@
 class LLMPatch {
   constructor() {
     this.apiEndpoint = 'https://api.openai.com/v1/chat/completions';
-    this.model = 'gpt-4.1'; // Using 4.1 for both selection and patching
+    this.model = 'gpt-5'; // Using 4.1 for both selection and patching
     this.apiKey = null;
+  }
+
+  /**
+   * Load base template HTML with caching
+   * @returns {Promise<string>} Base template HTML
+   */
+  async loadBaseTemplate() {
+    if (window.__BASE_TEMPLATE_CACHE__) {
+      return window.__BASE_TEMPLATE_CACHE__;
+    }
+    
+    try {
+      const url = chrome.runtime.getURL('templates/base_template.html');
+      const response = await fetch(url);
+      const template = await response.text();
+      window.__BASE_TEMPLATE_CACHE__ = template;
+      return template;
+    } catch (error) {
+      console.error('Failed to load base template:', error);
+      // Fallback to minimal template
+      const fallback = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lean View</title>
+</head>
+<body>
+  <header id="app-header"></header>
+  <main id="app-main"></main>
+  <footer id="app-footer"></footer>
+</body>
+</html>`;
+      window.__BASE_TEMPLATE_CACHE__ = fallback;
+      return fallback;
+    }
   }
 
   /**
@@ -173,11 +209,12 @@ Remember: Extract only what users actually NEED to use the website's core functi
 
 CRITICAL RULES:
 1. Output ONLY valid JSON following the exact patch schema
-2. Use CSS selectors that exist in the target HTML
+2. Use ONLY these allowed selectors: #app-main, #app-header, #app-footer, title, body
 3. Create clean, minimal HTML with NO styling classes
 4. Focus on FUNCTIONALITY, not appearance
 5. Preserve original element attributes (id, name, type, etc.)
 6. Make elements easily clickable and usable
+7. Prefer appending/replacing content inside #app-main
 
 PATCH SCHEMA:
 {
@@ -193,6 +230,13 @@ PATCH SCHEMA:
   ]
 }
 
+ALLOWED SELECTORS:
+- #app-main (preferred for main content)
+- #app-header (for navigation/header content)
+- #app-footer (for footer content)
+- title (for page title)
+- body (for body attributes)
+
 HTML GENERATION RULES:
 - Use semantic HTML tags (form, input, button, nav, ul, li, etc.)
 - Preserve original input types, names, and values
@@ -202,10 +246,10 @@ HTML GENERATION RULES:
 - Focus on making elements functional, not pretty
 
 EXAMPLES:
-- Google: Show search input + search button
-- Amazon: Show main nav + search + category menu
-- E-commerce: Show search + filters + product grid
-- News: Show main navigation + article headlines
+- Google: Append search input + search button to #app-main
+- Amazon: Append main nav to #app-header, search + category menu to #app-main
+- E-commerce: Append search + filters + product grid to #app-main
+- News: Append main navigation to #app-header, article headlines to #app-main
 
 Remember: Create functional HTML that lets users accomplish their goals, not decorative layouts.`;
   }
@@ -318,6 +362,13 @@ Remember: Create functional HTML that lets users accomplish their goals, not dec
    */
   applyHtmlPatch(oldHtml, patch) {
     try {
+      // Check for replaceFullDocument operation first
+      for (const operation of patch.operations) {
+        if (operation.op === 'replaceFullDocument' && operation.html) {
+          return operation.html;
+        }
+      }
+      
       const parser = new DOMParser();
       const doc = parser.parseFromString(oldHtml, 'text/html');
       

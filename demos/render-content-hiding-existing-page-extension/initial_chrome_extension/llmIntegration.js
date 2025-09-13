@@ -11,16 +11,16 @@ class LLMIntegration {
   constructor() {
     this.apiKey = null; // Will be set via configuration
     this.apiEndpoint = 'https://api.openai.com/v1/chat/completions';
-    this.model = 'gpt-4.1'; // Using GPT-4.1 with vision capabilities
+    this.model = 'gpt-5'; // Using gpt-5 with vision capabilities
     this.filterModel = 'gpt-5'; // Using GPT-4 Turbo for reasoning tasks
   }
 
   /**
    * Configure the LLM API
    * @param {string} apiKey - OpenAI API key
-   * @param {string} model - Model to use (default: gpt-4.1)
+   * @param {string} model - Model to use (default: gpt-5)
    */
-  configure(apiKey, model = 'gpt-4.1') {
+  configure(apiKey, model = 'gpt-5') {
     this.apiKey = apiKey;
     this.model = model;
   }

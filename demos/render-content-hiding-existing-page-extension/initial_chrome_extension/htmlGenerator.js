@@ -22,31 +22,36 @@ async function generatePageHTML(originalDOM, intent, old_html) {
       return generateFallbackHTML(originalDOM);
     }
 
+    // Load the base template
+    const baseTemplate = await window.LLMPatch.loadBaseTemplate();
+    
     // Stage 1: Select relevant DOM elements based on intent
     const { filteredDomJson } = await window.LLMPatch.selectRelevantDomElements(originalDOM, intent || '');
     console.log('Filtered DOM JSON:', filteredDomJson);
-    // Stage 2: Create and apply HTML patch
+    
+    // Stage 2: Create and apply HTML patch against base template
     const patch = await window.LLMPatch.createHtmlPatchFromSelection({ 
       selectedDom: filteredDomJson, 
-      oldHtml: old_html || '', 
+      oldHtml: baseTemplate, 
       intent: intent || '' 
     });
     
     console.log('Patch:', patch);
     // Apply the patch to get updated HTML
-    const updatedHtml = window.LLMPatch.applyHtmlPatch(old_html || '', patch);
+    const updatedHtml = window.LLMPatch.applyHtmlPatch(baseTemplate, patch);
     console.log('Updated HTML:', updatedHtml);
     return updatedHtml;
   } catch (error) {
     console.error('Error in LLM pipeline, falling back to static content:', error);
     
-    // If we have old_html, try to return it as-is to maintain state
-    if (old_html && old_html.trim() !== '') {
-      console.log('Returning existing HTML due to LLM error');
-      return old_html;
+    // Try to load base template as fallback
+    try {
+      const baseTemplate = await window.LLMPatch.loadBaseTemplate();
+      return baseTemplate;
+    } catch (templateError) {
+      console.error('Failed to load base template:', templateError);
+      return generateFallbackHTML(originalDOM);
     }
-    
-    return generateFallbackHTML(originalDOM);
   }
 }
 
