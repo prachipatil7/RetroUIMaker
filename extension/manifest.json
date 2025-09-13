@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Page Replacer",
+  "version": "0.1.0",
+  "description": "Hide original DOM and render a simplified overlay UI.",
+  "action": { "default_title": "Toggle Page Replacer" },
+  "background": { "service_worker": "bg.js" },
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "https://api.openai.com/*",
+    "https://api.anthropic.com/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["renderer/simplified.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
