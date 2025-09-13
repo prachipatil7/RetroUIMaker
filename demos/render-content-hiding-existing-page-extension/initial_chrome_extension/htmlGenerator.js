@@ -23,30 +23,33 @@ function generateOverlayHTML(originalHTML) {
   return `
     <div style="
       min-height: 100vh;
+      width: 100%;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
-      padding: 20px;
+      padding: 15px;
       box-sizing: border-box;
+      overflow-y: auto;
     ">
       <div style="
         text-align: center;
         color: white;
         background-color: rgba(255, 255, 255, 0.1);
-        padding: 60px 40px;
-        border-radius: 20px;
+        padding: 30px 20px;
+        border-radius: 15px;
         backdrop-filter: blur(15px);
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        max-width: 800px;
+        max-width: 100%;
         width: 100%;
         border: 1px solid rgba(255, 255, 255, 0.2);
+        margin-top: 60px;
       ">
         <h1 style="
-          font-size: 3.5rem;
-          margin: 0 0 30px 0;
+          font-size: 2.5rem;
+          margin: 0 0 20px 0;
           font-weight: 700;
           text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
           background: linear-gradient(45deg, #ffffff, #f0f0f0);
@@ -54,7 +57,7 @@ function generateOverlayHTML(originalHTML) {
           -webkit-text-fill-color: transparent;
           background-clip: text;
         ">
-          Hello World!
+          Generated UI
         </h1>
         
         <div style="
@@ -91,23 +94,23 @@ function generateOverlayHTML(originalHTML) {
         </div>
         
         <p style="
-          font-size: 1.3rem;
-          line-height: 1.8;
-          margin: 25px 0;
+          font-size: 1.2rem;
+          line-height: 1.7;
+          margin: 20px 0;
           color: #f5f5f5;
           text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
         ">
-          This overlay is generated dynamically and will replace the original webpage content.
+          This is the generated UI displayed side-by-side with the original content.
         </p>
         
         <p style="
-          font-size: 1.1rem;
-          line-height: 1.6;
-          margin: 20px 0;
+          font-size: 1rem;
+          line-height: 1.5;
+          margin: 15px 0;
           color: #e0e0e0;
           font-style: italic;
         ">
-          Click the toggle button above to return to the original content.
+          Compare the original (left) with the generated content (right).
         </p>
         
         <div style="

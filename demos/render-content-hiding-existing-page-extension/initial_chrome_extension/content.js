@@ -2,8 +2,9 @@ class DOMToggleExtension {
   constructor() {
     this.isToggled = false;
     this.originalElements = [];
-    this.helloWorldDiv = null;
+    this.generatedContentDiv = null;
     this.toggleButton = null;
+    this.sideBarContainer = null;
     this.init();
   }
 
@@ -19,14 +20,15 @@ class DOMToggleExtension {
   setupExtension() {
     this.createToggleButton();
     this.markOriginalContent();
-    this.createHelloWorldDiv();
+    this.createSideBarContainer();
+    this.createGeneratedContentDiv();
     this.attachEventListeners();
   }
 
   createToggleButton() {
     this.toggleButton = document.createElement('button');
     this.toggleButton.id = 'dom-toggle-btn';
-    this.toggleButton.textContent = 'Toggle View';
+    this.toggleButton.textContent = 'Show Side-by-Side';
     this.toggleButton.className = 'dom-toggle-button';
     
     // Insert at the very top of the body
@@ -34,10 +36,12 @@ class DOMToggleExtension {
   }
 
   markOriginalContent() {
-    // Instead of moving elements, we'll mark all existing content for show/hide
-    // Get all direct children of body (except our toggle button)
+    // Mark all existing content for side-by-side layout
+    // Get all direct children of body (except our extension elements)
     this.originalElements = Array.from(document.body.children).filter(
-      child => child.id !== 'dom-toggle-btn' && child.id !== 'hello-world-overlay'
+      child => child.id !== 'dom-toggle-btn' && 
+               child.id !== 'side-by-side-container' &&
+               child.id !== 'generated-content-overlay'
     );
     
     // Add our class to each original element for styling control
@@ -46,10 +50,17 @@ class DOMToggleExtension {
     });
   }
 
-  createHelloWorldDiv() {
-    this.helloWorldDiv = document.createElement('div');
-    this.helloWorldDiv.id = 'hello-world-overlay';
-    this.helloWorldDiv.className = 'hello-world-overlay hidden';
+  createSideBarContainer() {
+    this.sideBarContainer = document.createElement('div');
+    this.sideBarContainer.id = 'side-by-side-container';
+    this.sideBarContainer.className = 'side-by-side-container hidden';
+    document.body.appendChild(this.sideBarContainer);
+  }
+
+  createGeneratedContentDiv() {
+    this.generatedContentDiv = document.createElement('div');
+    this.generatedContentDiv.id = 'generated-content-overlay';
+    this.generatedContentDiv.className = 'generated-content-overlay hidden';
     
     // Get the original HTML content
     const originalHTML = window.HTMLGenerator.getOriginalHTML();
@@ -58,8 +69,8 @@ class DOMToggleExtension {
     const generatedHTML = window.HTMLGenerator.generateOverlayHTML(originalHTML);
     
     // Set the generated HTML as the content
-    this.helloWorldDiv.innerHTML = generatedHTML;
-    document.body.appendChild(this.helloWorldDiv);
+    this.generatedContentDiv.innerHTML = generatedHTML;
+    document.body.appendChild(this.generatedContentDiv);
   }
 
   attachEventListeners() {
@@ -70,19 +81,27 @@ class DOMToggleExtension {
     this.isToggled = !this.isToggled;
     
     if (this.isToggled) {
-      // Hide original content, show hello world
+      // Activate side-by-side view
       this.originalElements.forEach(element => {
-        element.classList.add('hidden-by-extension');
+        element.classList.add('side-by-side-left');
       });
-      this.helloWorldDiv.classList.remove('hidden');
-      this.toggleButton.textContent = 'Show Original';
+      this.generatedContentDiv.classList.remove('hidden');
+      this.sideBarContainer.classList.remove('hidden');
+      this.toggleButton.textContent = 'Hide Side-by-Side';
+      
+      // Add side-by-side class to body for global styling
+      document.body.classList.add('side-by-side-active');
     } else {
-      // Show original content, hide hello world
+      // Deactivate side-by-side view
       this.originalElements.forEach(element => {
-        element.classList.remove('hidden-by-extension');
+        element.classList.remove('side-by-side-left');
       });
-      this.helloWorldDiv.classList.add('hidden');
-      this.toggleButton.textContent = 'Toggle View';
+      this.generatedContentDiv.classList.add('hidden');
+      this.sideBarContainer.classList.add('hidden');
+      this.toggleButton.textContent = 'Show Side-by-Side';
+      
+      // Remove side-by-side class from body
+      document.body.classList.remove('side-by-side-active');
     }
   }
 }
