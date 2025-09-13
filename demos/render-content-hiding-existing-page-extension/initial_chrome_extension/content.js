@@ -444,6 +444,11 @@ class DOMToggleExtension {
       }
       
       console.log('Content regenerated with new button configuration');
+    } catch (error) {
+      console.error('Error regenerating content:', error);
+    }
+  }
+      
   /**
    * Set user intent for content generation
    * @param {string} intent - User intent
