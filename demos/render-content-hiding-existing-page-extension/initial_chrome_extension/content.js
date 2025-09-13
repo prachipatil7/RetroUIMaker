@@ -6,8 +6,8 @@ class DOMToggleExtension {
     this.originalIframe = null;
     this.generatedContentDiv = null;
     this.sideBarContainer = null;
-    this.generatedHtml = ''; // Store generated HTML for patching
-    this.currentIntent = ''; // Store current user intent
+    this.generatedHtml = this.getInitialHtml(); // Store initial HTML for patching
+    this.currentIntent = 'I want to look through my past orders on amazon'; // Store current user intent with default
     this.init();
   }
 
@@ -18,6 +18,47 @@ class DOMToggleExtension {
     } else {
       this.setupExtension();
     }
+  }
+
+  getInitialHtml() {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retro UI</title>
+  <link rel="stylesheet" href="${chrome.runtime.getURL('retro-theme.css')}">
+</head>
+<body class="retro-body">
+  <div class="retro-window">
+    <div class="retro-titlebar">
+      <span class="retro-titlebar-text">Retro Application</span>
+    </div>
+    
+    <div class="retro-window-content">
+      <h1 class="retro-title">Welcome to Retro UI</h1>
+      
+      <div class="retro-panel">
+        <p class="retro-text">This is a simple retro-styled interface. Enter some text below:</p>
+        
+        <div class="retro-form-row">
+          <label class="retro-label" for="sample-input">Input:</label>
+          <input type="text" id="sample-input" class="retro-input" placeholder="Type something here...">
+        </div>
+        
+        <div class="retro-form-row">
+          <button class="retro-button">Submit</button>
+          <button class="retro-button">Cancel</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="retro-statusbar">
+      <span>Ready</span>
+    </div>
+  </div>
+</body>
+</html>`;
   }
 
   async setupExtension() {
@@ -103,6 +144,9 @@ class DOMToggleExtension {
     // Listen for messages from popup
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (request.action === 'setMode') {
+        if (request.intent !== undefined) {
+          this.currentIntent = request.intent;
+        }
         this.setMode(request.mode);
         sendResponse({ success: true, mode: this.currentMode });
       } else if (request.action === 'getCurrentMode') {

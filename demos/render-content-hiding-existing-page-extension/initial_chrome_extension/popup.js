@@ -3,6 +3,8 @@
 class PopupController {
   constructor() {
     this.currentMode = 'normal';
+    this.currentIntent = 'I want to look through my past orders on amazon';
+    this.intentInput = null;
     this.init();
   }
 
@@ -12,6 +14,12 @@ class PopupController {
   }
 
   attachEventListeners() {
+    // Intent input listener
+    this.intentInput = document.getElementById('intent-input');
+    this.intentInput.addEventListener('input', () => {
+      this.updateIntent();
+    });
+
     // Button event listeners
     document.getElementById('reset-btn').addEventListener('click', () => {
       this.setMode('normal');
@@ -35,14 +43,18 @@ class PopupController {
       
       await chrome.tabs.sendMessage(tab.id, {
         action: 'setMode',
-        mode: mode
+        mode: mode,
+        intent: this.currentIntent
       });
 
       this.currentMode = mode;
       this.updateButtonStates();
       
       // Save state
-      chrome.storage.local.set({ currentMode: mode });
+      chrome.storage.local.set({ 
+        currentMode: mode,
+        currentIntent: this.currentIntent 
+      });
       
     } catch (error) {
       console.error('Error setting mode:', error);
@@ -81,6 +93,17 @@ class PopupController {
     }
   }
 
+  updateIntent() {
+    this.currentIntent = this.intentInput.value;
+    
+    // Save intent immediately when changed
+    chrome.storage.local.set({ 
+      currentIntent: this.currentIntent 
+    });
+    
+  }
+
+
   setLoadingState(loading) {
     document.querySelectorAll('.control-button').forEach(btn => {
       if (loading) {
@@ -91,16 +114,30 @@ class PopupController {
         btn.disabled = false;
       }
     });
+    
+    // Also disable intent input during loading
+    if (this.intentInput) {
+      this.intentInput.disabled = loading;
+    }
   }
 
 
   async loadCurrentState() {
     try {
       // Get saved state
-      const result = await chrome.storage.local.get(['currentMode']);
+      const result = await chrome.storage.local.get(['currentMode', 'currentIntent']);
+      
       if (result.currentMode) {
         this.currentMode = result.currentMode;
         this.updateButtonStates();
+      }
+      
+      if (result.currentIntent) {
+        this.currentIntent = result.currentIntent;
+        this.intentInput.value = this.currentIntent;
+      } else {
+        // Set default intent if none saved
+        this.intentInput.value = this.currentIntent;
       }
 
       // Get current state from content script
