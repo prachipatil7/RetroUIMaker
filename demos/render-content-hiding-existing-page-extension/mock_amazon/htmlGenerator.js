@@ -7,6 +7,7 @@
  */
 
 // Mock step counter for cycling through different mock versions
+const MOCK_AMAZON_PURCHASE_INTENT = "I want to buy a pink backpack for children";
 let mockStep = 1;
 
 /**
@@ -39,9 +40,9 @@ function resetMockStep() {
  * @param {number} step - The mock step number
  * @returns {Promise<string>} The HTML content from the mock file
  */
-async function loadMockHTML(step = mockStep) {
+async function loadMockHTML(intent, step = mockStep) {
   try {
-    const mockFileName = `mock_amazon${step}.html`;
+    const mockFileName = intent === MOCK_AMAZON_PURCHASE_INTENT ? `mock_amazon_purchase${step}.html` : `mock_amazon${step}.html`;
     const mockUrl = chrome.runtime.getURL(`mocks/${mockFileName}`);
     console.log(`🎭 Loading mock file: ${mockFileName}`);
     
@@ -77,7 +78,7 @@ async function generatePageHTML(originalDOM, intent, old_html) {
   
   try {
     // Load the appropriate mock HTML file
-    const mockHTML = await loadMockHTML(mockStep);
+    const mockHTML = await loadMockHTML(intent, mockStep);
     
     return mockHTML;
   } catch (error) {
