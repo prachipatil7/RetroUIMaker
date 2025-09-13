@@ -7,23 +7,59 @@
  */
 
 /**
- * Generates HTML content based on the original DOM
- * This function will be replaced with LLM-generated content
+ * Generates HTML content based on the original DOM using LLM-driven filtering and patching
  * 
  * @param {Document} originalDOM - The original DOM object of the page
  * @param {string} intent - The intent or purpose for the generated UI
  * @param {string} old_html - Previous HTML version for comparison/iteration
- * @returns {string} Clean HTML content without layout constraints
+ * @returns {Promise<string>} Clean HTML content without layout constraints
  */
-function generatePageHTML(originalDOM, intent, old_html) {
-  // For now, we'll create a static hello world page
-  // Later this can be replaced with LLM-generated content based on originalDOM
-  
+async function generatePageHTML(originalDOM, intent, old_html) {
+  try {
+    // Check if LLMPatch is available
+    if (!window.LLMPatch) {
+      console.warn('LLMPatch not available, falling back to static content');
+      return generateFallbackHTML(originalDOM);
+    }
+
+    // Stage 1: Select relevant DOM elements based on intent
+    const { filteredDomJson } = await window.LLMPatch.selectRelevantDomElements(originalDOM, intent || '');
+    console.log('Filtered DOM JSON:', filteredDomJson);
+    // Stage 2: Create and apply HTML patch
+    const patch = await window.LLMPatch.createHtmlPatchFromSelection({ 
+      selectedDom: filteredDomJson, 
+      oldHtml: old_html || '', 
+      intent: intent || '' 
+    });
+    
+    console.log('Patch:', patch);
+    // Apply the patch to get updated HTML
+    const updatedHtml = window.LLMPatch.applyHtmlPatch(old_html || '', patch);
+    console.log('Updated HTML:', updatedHtml);
+    return updatedHtml;
+  } catch (error) {
+    console.error('Error in LLM pipeline, falling back to static content:', error);
+    
+    // If we have old_html, try to return it as-is to maintain state
+    if (old_html && old_html.trim() !== '') {
+      console.log('Returning existing HTML due to LLM error');
+      return old_html;
+    }
+    
+    return generateFallbackHTML(originalDOM);
+  }
+}
+
+/**
+ * Generate fallback HTML when LLM pipeline fails
+ * @param {Document} originalDOM - The original DOM object
+ * @returns {string} Fallback HTML content
+ */
+function generateFallbackHTML(originalDOM) {
   // Extract some basic info from the original DOM for context
   const originalTitle = extractTitleFromDOM(originalDOM);
   const originalDomain = window.location.hostname;
   
-  // LLM will generate clean HTML using retro classes - no inline styles
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -35,90 +71,14 @@ function generatePageHTML(originalDOM, intent, old_html) {
     <body class="retro-body">
       <div class="retro-window">
         <div class="retro-window-header">
-          <span>Generated Retro UI - ${originalTitle}</span>
-          <div>
-            <button class="retro-button" style="font-size: 10px; padding: 0 4px;">_</button>
-            <button class="retro-button" style="font-size: 10px; padding: 0 4px;">□</button>
-            <button class="retro-button" style="font-size: 10px; padding: 0 4px;">×</button>
-          </div>
+          <span>Generated UI - ${originalTitle}</span>
         </div>
-        
         <div class="retro-window-content">
-          <div class="retro-menubar">
-            <span class="retro-menu-item">File</span>
-            <span class="retro-menu-item">Edit</span>
-            <span class="retro-menu-item">View</span>
-            <span class="retro-menu-item">Help</span>
+          <div class="retro-statusbar">
+            Ready | ${new Date().toLocaleString()} | Generated from: ${originalDomain}
           </div>
-          
-          <div class="retro-toolbar">
-            <div class="retro-toolbar-button">📁</div>
-            <div class="retro-toolbar-button">💾</div>
-            <div class="retro-toolbar-separator"></div>
-            <div class="retro-toolbar-button">✂️</div>
-            <div class="retro-toolbar-button">📋</div>
-            <div class="retro-toolbar-button">📄</div>
-          </div>
-          
-          <h1 class="retro-title">Original Page Analysis</h1>
-          
-          <div class="retro-groupbox">
-            <div class="retro-groupbox-title">Page Information</div>
-            <div class="retro-form-row">
-              <label class="retro-form-label retro-label">Domain:</label>
-              <input type="text" class="retro-input retro-form-input" value="${originalDomain}" readonly>
-            </div>
-            <div class="retro-form-row">
-              <label class="retro-form-label retro-label">Title:</label>
-              <input type="text" class="retro-input retro-form-input" value="${originalTitle}" readonly>
-            </div>
-          </div>
-          
-          <div class="retro-panel">
-            <h2 class="retro-subtitle">Generated Content</h2>
-            <p class="retro-text">
-              This is a retro-styled interface generated from the original webpage content.
-              The LLM will create similar interfaces using the retro CSS classes.
-            </p>
-            
-            <div class="retro-form-row">
-              <button class="retro-button">Regenerate</button>
-              <button class="retro-button">Export</button>
-              <button class="retro-button retro-disabled" disabled>Advanced</button>
-            </div>
-          </div>
-          
-          <div class="retro-groupbox">
-            <div class="retro-groupbox-title">Sample Controls</div>
-            <div class="retro-form-row">
-              <input type="checkbox" class="retro-checkbox" id="sample1">
-              <label for="sample1" class="retro-label">Enable retro mode</label>
-            </div>
-            <div class="retro-form-row">
-              <input type="radio" class="retro-radio" name="style" id="win95">
-              <label for="win95" class="retro-label">Windows 95</label>
-              <input type="radio" class="retro-radio" name="style" id="win98" checked>
-              <label for="win98" class="retro-label">Windows 98</label>
-            </div>
-            <div class="retro-form-row">
-              <label class="retro-form-label retro-label">Theme:</label>
-              <select class="retro-select retro-form-input">
-                <option>Classic Gray</option>
-                <option>High Contrast</option>
-                <option>Desert</option>
-              </select>
-            </div>
-          </div>
-          
-          <div class="retro-progressbar">
-            <div class="retro-progressbar-fill" style="width: 75%;"></div>
-          </div>
-          <p class="retro-text" style="margin-top: 4px;">Processing: 75% complete</p>
+          <p class="retro-text">LLM processing unavailable. Using fallback interface.</p>
         </div>
-      </div>
-      
-      <div class="retro-statusbar">
-        Ready | ${new Date().toLocaleString()} | Generated from: ${originalDomain}
       </div>
     </body>
     </html>
