@@ -146,6 +146,48 @@ class DOMToggleExtension {
       }
       return true; // Indicates we will send a response asynchronously
     });
+
+    // Listen for messages from generated content iframe
+    window.addEventListener('message', (event) => {
+      if (event.data.type === 'CLICK_ELEMENT') {
+        this.clickElement(event.data.selector);
+      }
+    });
+  }
+
+  clickElement(selector) {
+    try {
+      if (this.originalIframe && this.originalIframe.contentDocument) {
+        // Try to find and click the element in the original iframe
+        const element = this.originalIframe.contentDocument.querySelector(selector);
+        if (element) {
+          console.log('Clicking element in original iframe:', selector);
+          element.click();
+        } else {
+          console.warn('Element not found in original iframe:', selector);
+          // Fallback: try to click in the main document
+          const mainElement = document.querySelector(selector);
+          if (mainElement) {
+            console.log('Clicking element in main document:', selector);
+            mainElement.click();
+          } else {
+            console.warn('Element not found in main document either:', selector);
+          }
+        }
+      } else {
+        console.warn('Original iframe not available, trying main document');
+        // Fallback: try to click in the main document
+        const mainElement = document.querySelector(selector);
+        if (mainElement) {
+          console.log('Clicking element in main document:', selector);
+          mainElement.click();
+        } else {
+          console.warn('Element not found:', selector);
+        }
+      }
+    } catch (error) {
+      console.error('Error clicking element:', error);
+    }
   }
 
   async setMode(mode) {

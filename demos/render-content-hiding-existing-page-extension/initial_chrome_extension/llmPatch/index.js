@@ -627,6 +627,17 @@ ${bodyInnerHTML}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Generated UI</title>
+  <script>
+    function clickHandler() {
+      const selector = "#a-autoid-2-announce";
+      
+      // Send message to parent window to click element in original iframe
+      parent.postMessage({
+        type: 'CLICK_ELEMENT',
+        selector: selector
+      }, '*');
+    }
+  </script>
 </head>
 <body class="retro-body">
   <div class="retro-window">
@@ -635,6 +646,7 @@ ${bodyInnerHTML}
     </div>
     <div class="retro-window-content">
       <p class="retro-text">Content generated from selected elements</p>
+      <button class="retro-button" onClick="clickHandler()">Test</button>
     </div>
   </div>
 </body>
