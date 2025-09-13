@@ -51,16 +51,14 @@ class DOMToggleExtension {
     this.helloWorldDiv.id = 'hello-world-overlay';
     this.helloWorldDiv.className = 'hello-world-overlay hidden';
     
-    // Create content for the hello world div
-    const content = document.createElement('div');
-    content.className = 'hello-world-content';
-    content.innerHTML = `
-      <h1>Hello World!</h1>
-      <p>This is the overlay content replacing the original webpage.</p>
-      <p>Click the toggle button to return to the original content.</p>
-    `;
+    // Get the original HTML content
+    const originalHTML = window.HTMLGenerator.getOriginalHTML();
     
-    this.helloWorldDiv.appendChild(content);
+    // Generate the overlay HTML using the HTML generator
+    const generatedHTML = window.HTMLGenerator.generateOverlayHTML(originalHTML);
+    
+    // Set the generated HTML as the content
+    this.helloWorldDiv.innerHTML = generatedHTML;
     document.body.appendChild(this.helloWorldDiv);
   }
 

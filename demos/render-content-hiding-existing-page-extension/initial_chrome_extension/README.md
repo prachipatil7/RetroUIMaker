@@ -22,9 +22,10 @@ A clean and well-organized Chrome extension that allows users to toggle between 
 ## File Structure
 
 ```
-jank_chrome_extension/
+initial_chrome_extension/
 ├── manifest.json     # Extension configuration
-├── content.js        # Main logic and DOM manipulation
+├── htmlGenerator.js  # HTML generation logic (ready for LLM integration)
+├── content.js        # Main DOM manipulation and extension logic
 ├── styles.css        # Styling for toggle button and overlay
 └── README.md         # This documentation
 ```
@@ -33,7 +34,7 @@ jank_chrome_extension/
 
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable "Developer mode" in the top right
-3. Click "Load unpacked" and select the `jank_chrome_extension` folder
+3. Click "Load unpacked" and select the `initial_chrome_extension` folder
 4. The extension will be active on all websites
 
 ## Usage
@@ -55,10 +56,17 @@ jank_chrome_extension/
 
 ### Key Methods
 
+**Content Script (content.js):**
 - `init()`: Initializes the extension and waits for DOM ready
 - `setupExtension()`: Creates all UI elements and sets up event listeners
 - `markOriginalContent()`: Marks original DOM elements with CSS classes for control
+- `createHelloWorldDiv()`: Creates overlay using generated HTML content
 - `toggleView()`: Switches between original content and overlay
+
+**HTML Generator (htmlGenerator.js):**
+- `generateOverlayHTML(originalHTML)`: Generates complete HTML with inline CSS based on original content
+- `extractTitle(html)`: Extracts page title for context
+- `getOriginalHTML()`: Retrieves the original page HTML
 
 ### Styling Approach
 
@@ -66,6 +74,38 @@ jank_chrome_extension/
 - High z-index values to stay above page content
 - CSS transitions for smooth show/hide animations
 - Responsive design with media queries for mobile devices
+
+## LLM Integration Ready
+
+The extension is designed for easy LLM integration:
+
+### Current Implementation
+- `htmlGenerator.js` contains a `generateOverlayHTML()` function that takes the original page HTML as input
+- Returns complete HTML with inline CSS styling
+- Currently generates a static "Hello World" page with page context
+
+### Future LLM Integration
+To integrate with an LLM:
+1. Replace the content of `generateOverlayHTML()` function in `htmlGenerator.js`
+2. Send the `originalHTML` parameter to your LLM API
+3. Return the LLM-generated HTML response
+4. The extension will automatically display the generated content
+
+### Example LLM Integration:
+```javascript
+async function generateOverlayHTML(originalHTML) {
+  const response = await fetch('your-llm-api-endpoint', {
+    method: 'POST',
+    body: JSON.stringify({
+      original_html: originalHTML,
+      task: 'generate_improved_page'
+    })
+  });
+  
+  const result = await response.json();
+  return result.generated_html;
+}
+```
 
 ## Browser Compatibility
 
