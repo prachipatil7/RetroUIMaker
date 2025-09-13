@@ -589,33 +589,83 @@ Return the filtered DOM tree as JSON with the same schema, but with only the imp
 
 CRITICAL REQUIREMENTS:
 1. Preserve the parent-child structure of the filtered DOM tree
-2. For EVERY interactive element, add data-selector="<original selector>" attribute
-3. For EVERY interactive element, add data-sid="<stable-id>" attribute (use a hash of the selector)
-4. Use ONLY these allowed HTML tags: div, span, p, button, input, select, textarea, ul, li, a, form, h1, h2, h3, h4, h5, h6, img
-5. Use ONLY the provided retro CSS classes - no inline styles except for data attributes
+2. Add retro CSS styling to the elements provided [ get creative here ], Im competing to make amazing retro web interfaces
+
+      /* Retro CSS - Be deliberate about the styling
+         Main Component Classes
+.retro-body
+.retro-window
+.retro-window-header
+.retro-window-content
+Form Elements
+.retro-button
+.retro-input
+.retro-textarea
+.retro-label
+.retro-checkbox
+.retro-radio
+.retro-select
+Layout Components
+.retro-panel
+.retro-groupbox
+.retro-groupbox-title
+.retro-listbox
+.retro-list-item
+.retro-table
+.retro-toolbar
+.retro-toolbar-button
+.retro-toolbar-separator
+.retro-statusbar
+.retro-menubar
+.retro-menu-item
+.retro-progressbar
+.retro-progressbar-fill
+.retro-dialog
+.retro-dialog-buttons
+Typography
+.retro-title
+.retro-subtitle
+.retro-text
+Icons
+.retro-icon
+.retro-icon-large
+Form Layout
+.retro-form-row
+.retro-form-label
+.retro-form-input
+Scrollbar Styling
+.retro-scrollbar
+.retro-scrollbar::-webkit-scrollbar
+.retro-scrollbar::-webkit-scrollbar-track
+.retro-scrollbar::-webkit-scrollbar-thumb
+.retro-scrollbar::-webkit-scrollbar-corner
+State Classes
+.retro-disabled
+.retro-selected
+.retro-focused
+Pseudo-classes and Modifiers
+.retro-button:hover
+.retro-button:active
+.retro-button:disabled
+.retro-input:focus
+.retro-list-item:hover
+.retro-list-item.selected
+.retro-table th
+.retro-table td
+.retro-table tr:nth-child(even) td
+.retro-toolbar-button:hover
+.retro-toolbar-button:active
+.retro-menu-item:hover
+      */
+
+3. For EVERY interactive element, add data-selector="<original selector>" attribute, this is used to map the original element to the new element
+4. For EVERY interactive element, add data-sid="<stable-id>" attribute (use a hash of the selector)
+5. Use ONLY these allowed HTML tags: div, span, p, button, input, select, textarea, ul, li, a, form, h1, h2, h3, h4, h5, h6, img
 6. No scripts, no external resources, no inline event handlers
 7. Output ONLY the body innerHTML (no <html>, <head>, or <body> tags)
-8. Make the interface clean, accessible, and easy to navigate
+8. Make the interface clean, accessible, and easy to navigate, dont hallucinate any new elements
 
-RETRO CSS CLASSES AVAILABLE:
-- .retro-window, .retro-window-header, .retro-window-content
-- .retro-button, .retro-input, .retro-select, .retro-textarea
-- .retro-panel, .retro-groupbox, .retro-toolbar
-- .retro-title, .retro-subtitle, .retro-text
-- .retro-form-row, .retro-form-label, .retro-form-input
-- .retro-listbox, .retro-list-item
-- .retro-table, .retro-dialog
-- .retro-menubar, .retro-menu-item
-- .retro-statusbar, .retro-progressbar
 
-MAPPING RULES:
-- Convert complex forms into simplified retro form layouts
-- Group related elements using .retro-groupbox
-- Use .retro-panel for content sections
-- Convert navigation into .retro-menubar or .retro-listbox
-- Use .retro-button for all clickable elements
-- Use .retro-input, .retro-select, .retro-textarea for form controls
-- Add semantic headings (h1-h6) to improve structure
 - Preserve form functionality and input types`
             },
             {
@@ -624,7 +674,74 @@ MAPPING RULES:
 
 FILTERED_DOM_TREE = ${JSON.stringify(filteredDomJson, null, 2)}
 
-Generate the body innerHTML only, using retro CSS classes and preserving all interactive element mappings.`
+Generate the body innerHTML only, using retro CSS classes and preserving all interactive element mappings.
+Main Component Classes
+.retro-body
+.retro-window
+.retro-window-header
+.retro-window-content
+Form Elements
+.retro-button
+.retro-input
+.retro-textarea
+.retro-label
+.retro-checkbox
+.retro-radio
+.retro-select
+Layout Components
+.retro-panel
+.retro-groupbox
+.retro-groupbox-title
+.retro-listbox
+.retro-list-item
+.retro-table
+.retro-toolbar
+.retro-toolbar-button
+.retro-toolbar-separator
+.retro-statusbar
+.retro-menubar
+.retro-menu-item
+.retro-progressbar
+.retro-progressbar-fill
+.retro-dialog
+.retro-dialog-buttons
+Typography
+.retro-title
+.retro-subtitle
+.retro-text
+Icons
+.retro-icon
+.retro-icon-large
+Form Layout
+.retro-form-row
+.retro-form-label
+.retro-form-input
+Scrollbar Styling
+.retro-scrollbar
+.retro-scrollbar::-webkit-scrollbar
+.retro-scrollbar::-webkit-scrollbar-track
+.retro-scrollbar::-webkit-scrollbar-thumb
+.retro-scrollbar::-webkit-scrollbar-corner
+State Classes
+.retro-disabled
+.retro-selected
+.retro-focused
+Pseudo-classes and Modifiers
+.retro-button:hover
+.retro-button:active
+.retro-button:disabled
+.retro-input:focus
+.retro-list-item:hover
+.retro-list-item.selected
+.retro-table th
+.retro-table td
+.retro-table tr:nth-child(even) td
+.retro-toolbar-button:hover
+.retro-toolbar-button:active
+.retro-menu-item:hover
+`
+
+
             }
           ],
           max_completion_tokens: 100000
@@ -708,12 +825,11 @@ Generate the body innerHTML only, using retro CSS classes and preserving all int
 TASK: Analyze the provided website screenshot and DOM data to create a simplified, retro-styled UI that maintains all functionality while being more accessible and easier to use.
 
 REQUIREMENTS:
-1. Generate clean HTML using the retro CSS classes provided
+1. Generate clean HTML and add retro CSS styling to the elements provided [ get creative here ]
 2. Include data-sid attributes for ALL interactive elements that map to the original elements
 3. Preserve all functionality (forms, buttons, links, etc.)
-4. Use a Windows 95/98 retro aesthetic
-5. Make the interface more accessible and easier to navigate
-6. Remove clutter and focus on essential functionality
+4. Make the interface more accessible and easier to navigate
+5. Remove clutter and focus on essential functionality
 
 WEBSITE DATA:
 - Title: ${websiteData.metadata.title}
@@ -724,15 +840,6 @@ INTERACTIVE ELEMENTS FOUND:
 ${websiteData.dom.interactiveElements.map(el => 
   `- ${el.tagName} (${el.id}): "${el.text}" - Position: ${el.position.x},${el.position.y} - Type: ${el.type || 'N/A'}`
 ).join('\n')}
-
-RETRO CSS CLASSES AVAILABLE:
-- .retro-window, .retro-window-header, .retro-window-content
-- .retro-button, .retro-input, .retro-select, .retro-textarea
-- .retro-panel, .retro-groupbox, .retro-toolbar
-- .retro-title, .retro-subtitle, .retro-text
-- .retro-form-row, .retro-form-label, .retro-form-input
-- .retro-listbox, .retro-list-item
-- .retro-table, .retro-dialog
 
 CRITICAL: Every interactive element MUST have a data-sid attribute that matches the original element's ID. This is essential for action mapping.
 
@@ -753,13 +860,12 @@ Generate clean HTML that:
 1. Preserves all original functionality (forms, buttons, links)
 2. Uses semantic HTML tags (form, input, button, nav, ul, li)
 3. Keeps original attributes (id, name, type, href, action)
-4. Focuses on CORE FUNCTIONALITY, not styling
-5. Makes elements easily clickable and usable
-6. Removes decorative elements and clutter
+4. Makes elements easily clickable and usable
+5. Removes decorative elements and clutter
 
 Examples:
 - Google: Show search input + search button
-- Amazon: Show main nav + search + category menu  
+- Amazon: Show main nav + search + category menu
 - E-commerce: Show search + filters + product grid
 - News: Show main navigation + article headlines
 
@@ -781,22 +887,95 @@ Generate the body innerHTML only, focusing on what users actually need to use th
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Simplified UI - ${metadata.title}</title>
+        <style>
+    .body {
+      margin: 0;
+      padding: 0;
+    }
+      /* Retro CSS - Be deliberate about the styling
+
+      Main Component Classes
+.retro-body
+.retro-window
+.retro-window-header
+.retro-window-content
+Form Elements
+.retro-button
+.retro-input
+.retro-textarea
+.retro-label
+.retro-checkbox
+.retro-radio
+.retro-select
+Layout Components
+.retro-panel
+.retro-groupbox
+.retro-groupbox-title
+.retro-listbox
+.retro-list-item
+.retro-table
+.retro-toolbar
+.retro-toolbar-button
+.retro-toolbar-separator
+.retro-statusbar
+.retro-menubar
+.retro-menu-item
+.retro-progressbar
+.retro-progressbar-fill
+.retro-dialog
+.retro-dialog-buttons
+Typography
+.retro-title
+.retro-subtitle
+.retro-text
+Icons
+.retro-icon
+.retro-icon-large
+Form Layout
+.retro-form-row
+.retro-form-label
+.retro-form-input
+Scrollbar Styling
+.retro-scrollbar
+.retro-scrollbar::-webkit-scrollbar
+.retro-scrollbar::-webkit-scrollbar-track
+.retro-scrollbar::-webkit-scrollbar-thumb
+.retro-scrollbar::-webkit-scrollbar-corner
+State Classes
+.retro-disabled
+.retro-selected
+.retro-focused
+Pseudo-classes and Modifiers
+.retro-button:hover
+.retro-button:active
+.retro-button:disabled
+.retro-input:focus
+.retro-list-item:hover
+.retro-list-item.selected
+.retro-table th
+.retro-table td
+.retro-table tr:nth-child(even) td
+.retro-toolbar-button:hover
+.retro-toolbar-button:active
+.retro-menu-item:hover
+        */
+  </style>
     </head>
-    <body class="retro-body">
-      <div class="retro-window">
-        <div class="retro-window-header">
+    <body class="body">
+      <div class="window">
+        <div class="window-header">
           <span>Simplified UI - ${metadata.title}</span>
         </div>
         
-        <div class="retro-window-content">
-          <h1 class="retro-title">${metadata.title}</h1>
-          <p class="retro-text">Simplified interface for: ${metadata.domain}</p>
+        <div class="window-content">
+          <h1 class="title">${metadata.title}</h1>
+          <p class="text">Simplified interface for: ${metadata.domain}</p>
           
-          <div class="retro-panel">
-            <h2 class="retro-subtitle">Interactive Elements</h2>
+          <div class="panel">
+            <h2 class="subtitle">Interactive Elements</h2>
             ${dom.interactiveElements.map(el => `
-              <div class="retro-form-row">
-                <button class="retro-button" data-sid="${el.id}">
+              <div class="form-row">
+                <button class="button" data-sid="${el.id}">
                   ${el.text || el.tagName} (${el.type || 'button'})
                 </button>
               </div>

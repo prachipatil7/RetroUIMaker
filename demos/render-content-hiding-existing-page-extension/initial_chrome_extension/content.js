@@ -27,36 +27,83 @@ class DOMToggleExtension {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Retro UI</title>
-  <link rel="stylesheet" href="${chrome.runtime.getURL('retro-theme.css')}">
+    <style>
+    .body {
+      margin: 0;
+      padding: 0;
+    }
+            /* Retro CSS - Be deliberate about the styling
+         Use a Nintendo/Tetris/Mario color palette:
+         Use the retro-theme.css file for the retro css classes
+         Main Component Classes
+.retro-body
+.retro-window
+.retro-window-header
+.retro-window-content
+Form Elements
+.retro-button
+.retro-input
+.retro-textarea
+.retro-label
+.retro-checkbox
+.retro-radio
+.retro-select
+Layout Components
+.retro-panel
+.retro-groupbox
+.retro-groupbox-title
+.retro-listbox
+.retro-list-item
+.retro-table
+.retro-toolbar
+.retro-toolbar-button
+.retro-toolbar-separator
+.retro-statusbar
+.retro-menubar
+.retro-menu-item
+.retro-progressbar
+.retro-progressbar-fill
+.retro-dialog
+.retro-dialog-buttons
+Typography
+.retro-title
+.retro-subtitle
+.retro-text
+Icons
+.retro-icon
+.retro-icon-large
+Form Layout
+.retro-form-row
+.retro-form-label
+.retro-form-input
+Scrollbar Styling
+.retro-scrollbar
+.retro-scrollbar::-webkit-scrollbar
+.retro-scrollbar::-webkit-scrollbar-track
+.retro-scrollbar::-webkit-scrollbar-thumb
+.retro-scrollbar::-webkit-scrollbar-corner
+State Classes
+.retro-disabled
+.retro-selected
+.retro-focused
+Pseudo-classes and Modifiers
+.retro-button:hover
+.retro-button:active
+.retro-button:disabled
+.retro-input:focus
+.retro-list-item:hover
+.retro-list-item.selected
+.retro-table th
+.retro-table td
+.retro-table tr:nth-child(even) td
+.retro-toolbar-button:hover
+.retro-toolbar-button:active
+.retro-menu-item:hover
+      */
+  </style>
+  
 </head>
-<body class="retro-body">
-  <div class="retro-window">
-    <div class="retro-titlebar">
-      <span class="retro-titlebar-text">Retro Application</span>
-    </div>
-    
-    <div class="retro-window-content">
-      <h1 class="retro-title">Welcome to Retro UI</h1>
-      
-      <div class="retro-panel">
-        <p class="retro-text">This is a simple retro-styled interface. Enter some text below:</p>
-        
-        <div class="retro-form-row">
-          <label class="retro-label" for="sample-input">Input:</label>
-          <input type="text" id="sample-input" class="retro-input" placeholder="Type something here...">
-        </div>
-        
-        <div class="retro-form-row">
-          <button class="retro-button">Submit</button>
-          <button class="retro-button">Cancel</button>
-        </div>
-      </div>
-    </div>
-    
-    <div class="retro-statusbar">
-      <span>Ready</span>
-    </div>
-  </div>
+<body>
 </body>
 </html>`;
   }
@@ -99,6 +146,11 @@ class DOMToggleExtension {
 
   createOriginalIframe() {
     this.originalIframe = document.createElement('iframe');
+    if (!this.originalIframe) {
+      console.error('Failed to create iframe element');
+      return;
+    }
+    
     this.originalIframe.id = 'original-content-iframe';
     this.originalIframe.className = 'original-content-iframe hidden';
     this.originalIframe.style.cssText = `
@@ -112,6 +164,16 @@ class DOMToggleExtension {
       border-right: 2px solid #333;
       box-shadow: 5px 0 15px rgba(0, 0, 0, 0.2);
     `;
+    
+    // Add error handling for iframe
+    this.originalIframe.onload = function() {
+      console.log('Original iframe loaded successfully');
+    };
+    
+    this.originalIframe.onerror = function(error) {
+      console.error('Original iframe failed to load:', error);
+    };
+    
     document.body.appendChild(this.originalIframe);
   }
 
@@ -163,7 +225,9 @@ class DOMToggleExtension {
 
   clickElement(selector) {
     try {
-      if (this.originalIframe && this.originalIframe.contentDocument) {
+      if (this.originalIframe && 
+          this.originalIframe.contentDocument && 
+          typeof this.originalIframe.contentDocument.querySelector === 'function') {
         // Try to find and click the element in the original iframe
         const element = this.originalIframe.contentDocument.querySelector(selector);
         if (element) {
@@ -198,7 +262,9 @@ class DOMToggleExtension {
 
   changeElement(selector, value) {
     try {
-      if (this.originalIframe && this.originalIframe.contentDocument) {
+      if (this.originalIframe && 
+          this.originalIframe.contentDocument && 
+          typeof this.originalIframe.contentDocument.querySelector === 'function') {
         // Try to find and update the element in the original iframe
         const element = this.originalIframe.contentDocument.querySelector(selector);
         if (element) {
@@ -375,16 +441,23 @@ class DOMToggleExtension {
     // Give the original action time to complete
     setTimeout(() => {
       try {
-        // If the iframe is currently visible, reload it to show updates
-        if (this.originalIframe && !this.originalIframe.classList.contains('hidden')) {
+        // Check if iframe exists and is currently visible
+        if (this.originalIframe && 
+            typeof this.originalIframe.classList !== 'undefined' && 
+            !this.originalIframe.classList.contains('hidden')) {
           // Force reload by adding a timestamp parameter
           const currentUrl = new URL(window.location.href);
           currentUrl.searchParams.set('_refresh', Date.now().toString());
-          this.originalIframe.src = currentUrl.toString();
           
-          console.log('Successfully refreshed iframe to show updated state');
+          // Ensure iframe is not null before setting src
+          if (this.originalIframe) {
+            this.originalIframe.src = currentUrl.toString();
+            console.log('Successfully refreshed iframe to show updated state');
+          } else {
+            console.warn('Iframe became null during refresh');
+          }
         } else {
-          console.log('Iframe not visible, no refresh needed');
+          console.log('Iframe not visible or not available, no refresh needed');
         }
       } catch (error) {
         console.error('Error refreshing iframe:', error);
