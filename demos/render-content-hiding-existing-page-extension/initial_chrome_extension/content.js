@@ -1,9 +1,11 @@
 class DOMToggleExtension {
   constructor() {
-    this.isToggled = false;
+    this.currentMode = 'normal'; // 'normal', 'side-by-side', 'overlay'
     this.originalElements = [];
     this.generatedContentDiv = null;
-    this.toggleButton = null;
+    this.sideBySideButton = null;
+    this.overlayButton = null;
+    this.buttonContainer = null;
     this.sideBarContainer = null;
     this.init();
   }
@@ -18,28 +20,53 @@ class DOMToggleExtension {
   }
 
   setupExtension() {
-    this.createToggleButton();
+    this.createButtonContainer();
+    this.createButtons();
     this.markOriginalContent();
     this.createSideBarContainer();
     this.createGeneratedContentDiv();
     this.attachEventListeners();
   }
 
-  createToggleButton() {
-    this.toggleButton = document.createElement('button');
-    this.toggleButton.id = 'dom-toggle-btn';
-    this.toggleButton.textContent = 'Show Side-by-Side';
-    this.toggleButton.className = 'dom-toggle-button';
+  createButtonContainer() {
+    this.buttonContainer = document.createElement('div');
+    this.buttonContainer.id = 'retro-extension-buttons';
+    this.buttonContainer.className = 'retro-extension-buttons';
     
     // Insert at the very top of the body
-    document.body.insertBefore(this.toggleButton, document.body.firstChild);
+    document.body.insertBefore(this.buttonContainer, document.body.firstChild);
+  }
+
+  createButtons() {
+    // Side-by-side button
+    this.sideBySideButton = document.createElement('button');
+    this.sideBySideButton.id = 'side-by-side-btn';
+    this.sideBySideButton.textContent = 'Side-by-Side';
+    this.sideBySideButton.className = 'retro-mode-button';
+    
+    // Overlay button
+    this.overlayButton = document.createElement('button');
+    this.overlayButton.id = 'overlay-btn';
+    this.overlayButton.textContent = 'Retro Overlay';
+    this.overlayButton.className = 'retro-mode-button';
+    
+    // Reset button
+    this.resetButton = document.createElement('button');
+    this.resetButton.id = 'reset-btn';
+    this.resetButton.textContent = 'Reset';
+    this.resetButton.className = 'retro-mode-button reset-button';
+    
+    // Add buttons to container
+    this.buttonContainer.appendChild(this.sideBySideButton);
+    this.buttonContainer.appendChild(this.overlayButton);
+    this.buttonContainer.appendChild(this.resetButton);
   }
 
   markOriginalContent() {
-    // Mark all existing content for side-by-side layout
+    // Mark all existing content for mode switching
     // Get all direct children of body (except our extension elements)
     this.originalElements = Array.from(document.body.children).filter(
-      child => child.id !== 'dom-toggle-btn' && 
+      child => child.id !== 'retro-extension-buttons' && 
                child.id !== 'side-by-side-container' &&
                child.id !== 'generated-content-overlay'
     );
@@ -77,34 +104,85 @@ class DOMToggleExtension {
   }
 
   attachEventListeners() {
-    this.toggleButton.addEventListener('click', () => this.toggleView());
+    this.sideBySideButton.addEventListener('click', () => this.setSideBySideMode());
+    this.overlayButton.addEventListener('click', () => this.setOverlayMode());
+    this.resetButton.addEventListener('click', () => this.setNormalMode());
   }
 
-  toggleView() {
-    this.isToggled = !this.isToggled;
+  setSideBySideMode() {
+    this.setNormalMode(); // Reset first
+    this.currentMode = 'side-by-side';
     
-    if (this.isToggled) {
-      // Activate side-by-side view
-      this.originalElements.forEach(element => {
-        element.classList.add('side-by-side-left');
-      });
-      this.generatedContentDiv.classList.remove('hidden');
-      this.sideBarContainer.classList.remove('hidden');
-      this.toggleButton.textContent = 'Hide Side-by-Side';
-      
-      // Add side-by-side class to body for global styling
-      document.body.classList.add('side-by-side-active');
-    } else {
-      // Deactivate side-by-side view
-      this.originalElements.forEach(element => {
-        element.classList.remove('side-by-side-left');
-      });
-      this.generatedContentDiv.classList.add('hidden');
-      this.sideBarContainer.classList.add('hidden');
-      this.toggleButton.textContent = 'Show Side-by-Side';
-      
-      // Remove side-by-side class from body
-      document.body.classList.remove('side-by-side-active');
+    // Activate side-by-side view
+    this.originalElements.forEach(element => {
+      element.classList.add('side-by-side-left');
+    });
+    this.generatedContentDiv.classList.remove('hidden');
+    this.generatedContentDiv.classList.add('side-by-side-mode');
+    this.sideBarContainer.classList.remove('hidden');
+    
+    // Add side-by-side class to body for global styling
+    document.body.classList.add('side-by-side-active');
+    
+    // Update button states
+    this.updateButtonStates();
+  }
+
+  setOverlayMode() {
+    this.setNormalMode(); // Reset first
+    this.currentMode = 'overlay';
+    
+    // Hide original content, show generated content as full overlay
+    this.originalElements.forEach(element => {
+      element.classList.add('hidden-by-extension');
+    });
+    this.generatedContentDiv.classList.remove('hidden');
+    this.generatedContentDiv.classList.add('overlay-mode');
+    
+    // Add overlay class to body for global styling
+    document.body.classList.add('overlay-active');
+    
+    // Update button states
+    this.updateButtonStates();
+  }
+
+  setNormalMode() {
+    this.currentMode = 'normal';
+    
+    // Reset all original elements
+    this.originalElements.forEach(element => {
+      element.classList.remove('side-by-side-left', 'hidden-by-extension');
+    });
+    
+    // Hide generated content
+    this.generatedContentDiv.classList.add('hidden');
+    this.generatedContentDiv.classList.remove('side-by-side-mode', 'overlay-mode');
+    this.sideBarContainer.classList.add('hidden');
+    
+    // Remove all body classes
+    document.body.classList.remove('side-by-side-active', 'overlay-active');
+    
+    // Update button states
+    this.updateButtonStates();
+  }
+
+  updateButtonStates() {
+    // Reset all button states
+    this.sideBySideButton.classList.remove('active');
+    this.overlayButton.classList.remove('active');
+    this.resetButton.classList.remove('active');
+    
+    // Set active state based on current mode
+    switch (this.currentMode) {
+      case 'side-by-side':
+        this.sideBySideButton.classList.add('active');
+        break;
+      case 'overlay':
+        this.overlayButton.classList.add('active');
+        break;
+      case 'normal':
+        this.resetButton.classList.add('active');
+        break;
     }
   }
 }
