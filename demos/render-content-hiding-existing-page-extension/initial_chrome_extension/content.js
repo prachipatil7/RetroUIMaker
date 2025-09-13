@@ -84,7 +84,7 @@ class DOMToggleExtension {
     
     // Generate clean HTML page using async LLM pipeline
     try {
-      this.generatedHtml = await window.HTMLGenerator.generatePageHTML(originalDOM, this.currentIntent, this.generatedHtml);
+      this.generatedHtml = await window.HTMLGenerator.generatePageHTML(originalDOM, this.currentIntent, '');
     } catch (error) {
       console.error('Error generating HTML:', error);
       // Fallback to static content
@@ -216,8 +216,8 @@ class DOMToggleExtension {
       // Get the original DOM object
       const originalDOM = window.HTMLGenerator.getOriginalDOM();
       
-      // Generate new HTML using current intent and existing HTML
-      this.generatedHtml = await window.HTMLGenerator.generatePageHTML(originalDOM, this.currentIntent, this.generatedHtml);
+      // Generate new HTML using current intent (always against base template)
+      this.generatedHtml = await window.HTMLGenerator.generatePageHTML(originalDOM, this.currentIntent, '');
       
       // Wrap it for side-by-side display
       const wrappedHTML = window.HTMLGenerator.wrapForSideBySide(this.generatedHtml);
