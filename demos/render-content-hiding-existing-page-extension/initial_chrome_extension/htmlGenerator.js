@@ -168,28 +168,29 @@ function generateFallbackHTML(originalDOM, intent, old_html) {
   console.log('intent', intent);
   
   return `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Generated UI - ${originalTitle}</title>
-    </head>
-    <body class="retro-body">
-      <div class="retro-window">
-        <div class="retro-window-header">
-          <span>Generated UI - ${originalTitle}</span>
-        </div>
-        <div class="retro-window-content">
-          <div class="retro-statusbar">
-            Ready | ${new Date().toLocaleString()} | Generated from: ${originalDomain}
+     `
+      `<!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Generated UI - ${originalTitle}</title>
+      </head>
+      <body>
+        <div>
+          <div>
+            <span>Generated UI - ${originalTitle}</span>
           </div>
-          <p class="retro-text">LLM processing unavailable. Using fallback interface.</p>
+          <div>
+            <div>
+              Ready | ${new Date().toLocaleString()} | Generated from: ${originalDomain}
+            </div>
+            <p>LLM processing unavailable. Using fallback interface.</p>
+          </div>
         </div>
-      </div>
-    </body>
-    </html>
-  `;
+      </body>
+      </html>
+    `;
 }
 
 /**
@@ -203,7 +204,7 @@ function wrapForSideBySide(generatedHTML) {
   // Inject retro CSS into the HTML head
   const htmlWithCSS = generatedHTML.replace(
     '</head>',
-    `<link rel="stylesheet" href="${chrome.runtime.getURL('retro-theme.css')}"></head>`
+    `</head>`
   );
   
   return `

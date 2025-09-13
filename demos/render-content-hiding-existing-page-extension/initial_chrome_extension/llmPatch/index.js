@@ -516,7 +516,7 @@ Remember: Create functional HTML that lets users accomplish their goals, not dec
       console.log('Filtered elements:', result);
       
       // Handle both array format and object with filtered_dom_tree property
-      const filteredElements = Array.isArray(result) ? result : (result.filtered_dom_tree || result);
+      const filteredElements = Array.isArray(result) ? result : (result.elements || result);
       
       const selectionResult = {
         filteredDomJson: filteredElements,
@@ -637,8 +637,82 @@ Remember: Create functional HTML that lets users accomplish their goals, not dec
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Generated UI</title>
+  <style>
+    .body {
+      margin: 0;
+      padding: 0;
+    }
+            /* Retro CSS - Be deliberate about the styling
+         Use a Nintendo/Tetris/Mario color palette:
+Main Component Classes
+.retro-body
+.retro-window
+.retro-window-header
+.retro-window-content
+Form Elements
+.retro-button
+.retro-input
+.retro-textarea
+.retro-label
+.retro-checkbox
+.retro-radio
+.retro-select
+Layout Components
+.retro-panel
+.retro-groupbox
+.retro-groupbox-title
+.retro-listbox
+.retro-list-item
+.retro-table
+.retro-toolbar
+.retro-toolbar-button
+.retro-toolbar-separator
+.retro-statusbar
+.retro-menubar
+.retro-menu-item
+.retro-progressbar
+.retro-progressbar-fill
+.retro-dialog
+.retro-dialog-buttons
+Typography
+.retro-title
+.retro-subtitle
+.retro-text
+Icons
+.retro-icon
+.retro-icon-large
+Form Layout
+.retro-form-row
+.retro-form-label
+.retro-form-input
+Scrollbar Styling
+.retro-scrollbar
+.retro-scrollbar::-webkit-scrollbar
+.retro-scrollbar::-webkit-scrollbar-track
+.retro-scrollbar::-webkit-scrollbar-thumb
+.retro-scrollbar::-webkit-scrollbar-corner
+State Classes
+.retro-disabled
+.retro-selected
+.retro-focused
+Pseudo-classes and Modifiers
+.retro-button:hover
+.retro-button:active
+.retro-button:disabled
+.retro-input:focus
+.retro-list-item:hover
+.retro-list-item.selected
+.retro-table th
+.retro-table td
+.retro-table tr:nth-child(even) td
+.retro-toolbar-button:hover
+.retro-toolbar-button:active
+.retro-menu-item:hover
+
+         */
+  </style>
 </head>
-<body class="retro-body">
+<body class="body">
 ${bodyInnerHTML}
 </body>
 </html>`;
@@ -652,9 +726,9 @@ ${bodyInnerHTML}
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Generated UI</title>
 </head>
-<body class="retro-body">
-  <div class="retro-window">
-    <div class="retro-window-header">
+<body class="body">
+  <div class="window">
+    <div class="window-header">
       <span>Generated UI</span>
     </div>
     <div class="retro-window-content">
@@ -992,45 +1066,12 @@ Return a filtered array with only the essential elements users need for basic na
       return this.buildPatchPrompt(truncatedDom, oldHtml, intent);
     }
     
-    return `You need to create an HTML patch that modifies the existing HTML. The final HTML (obtained after applying your patch) must contain all elements in the selected DOM, and no other elements may be created (do not create any other text, buttons, or hallucinate new elements). Ensure that the elements in the SELECTED_DOM are exact, with no modifications to their attributes or content. If the elements in the SELECTED_DOM have handlers, they must be present in the HTML. The only additional elements you can create are divs for some basic grouping or organizing of the SELECTED_DOM elements.
-
-Additionally, you may add the appropriate CSS classes to the SELECTED_DOM elements to make them have a consistent look. This is the only thing that can be modified for the SLECTED_DOM elements. These are the CSS classes that are available to you:
-- retro-body: Main body styling with Windows 95/98 look
-- retro-window: Window container with 3D border effect
-- retro-window-header: Blue gradient header for windows
-- retro-window-content: Content area of windows
-- retro-button: Classic button styling with 3D effect
-- retro-input: Input field with inset border
-- retro-textarea: Textarea with inset border
-- retro-label: Text labels
-- retro-checkbox, retro-radio: Form controls
-- retro-select: Dropdown select styling
-- retro-panel: Panel container with border
-- retro-groupbox: Group box with title
-- retro-groupbox-title: Title for group boxes
-- retro-listbox: List container
-- retro-list-item: Individual list items
-- retro-table: Table styling
-- retro-toolbar: Toolbar container
-- retro-toolbar-button: Toolbar buttons
-- retro-statusbar: Status bar at bottom
-- retro-menubar: Menu bar
-- retro-menu-item: Menu items
-- retro-progressbar: Progress bar container
-- retro-progressbar-fill: Progress bar fill
-- retro-title: Large title text
-- retro-subtitle: Subtitle text
-- retro-text: Regular text
-- retro-icon: Small icons (16x16)
-- retro-icon-large: Large icons (32x32)
-- retro-form-row: Form row layout
-- retro-form-label: Form labels
-- retro-form-input: Form input containers
-- retro-dialog: Dialog boxes
-- retro-dialog-buttons: Dialog button containers
-- retro-disabled: Disabled state
-- retro-selected: Selected state
-- retro-focused: Focused state
+    return `You need to create an HTML patch that modifies the existing HTML. 
+    The final HTML (obtained after applying your patch) must contain all elements in the selected DOM, 
+    and no other elements may be created (do not create any other text, buttons, or hallucinate new elements). 
+    Ensure that the elements in the SELECTED_DOM are exact, with no modifications to their attributes or content. 
+    If the elements in the SELECTED_DOM have handlers, they must be present in the HTML. 
+    The only additional elements you can create are divs for some basic grouping or organizing of the SELECTED_DOM elements.
 
 SELECTED_DOM = ${selectedDomString}
 

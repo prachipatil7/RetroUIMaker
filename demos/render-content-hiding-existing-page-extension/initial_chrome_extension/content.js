@@ -27,36 +27,83 @@ class DOMToggleExtension {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Retro UI</title>
-  <link rel="stylesheet" href="${chrome.runtime.getURL('retro-theme.css')}">
+    <style>
+    .body {
+      margin: 0;
+      padding: 0;
+    }
+            /* Retro CSS - Be deliberate about the styling
+         Use a Nintendo/Tetris/Mario color palette:
+         Use the retro-theme.css file for the retro css classes
+         Main Component Classes
+.retro-body
+.retro-window
+.retro-window-header
+.retro-window-content
+Form Elements
+.retro-button
+.retro-input
+.retro-textarea
+.retro-label
+.retro-checkbox
+.retro-radio
+.retro-select
+Layout Components
+.retro-panel
+.retro-groupbox
+.retro-groupbox-title
+.retro-listbox
+.retro-list-item
+.retro-table
+.retro-toolbar
+.retro-toolbar-button
+.retro-toolbar-separator
+.retro-statusbar
+.retro-menubar
+.retro-menu-item
+.retro-progressbar
+.retro-progressbar-fill
+.retro-dialog
+.retro-dialog-buttons
+Typography
+.retro-title
+.retro-subtitle
+.retro-text
+Icons
+.retro-icon
+.retro-icon-large
+Form Layout
+.retro-form-row
+.retro-form-label
+.retro-form-input
+Scrollbar Styling
+.retro-scrollbar
+.retro-scrollbar::-webkit-scrollbar
+.retro-scrollbar::-webkit-scrollbar-track
+.retro-scrollbar::-webkit-scrollbar-thumb
+.retro-scrollbar::-webkit-scrollbar-corner
+State Classes
+.retro-disabled
+.retro-selected
+.retro-focused
+Pseudo-classes and Modifiers
+.retro-button:hover
+.retro-button:active
+.retro-button:disabled
+.retro-input:focus
+.retro-list-item:hover
+.retro-list-item.selected
+.retro-table th
+.retro-table td
+.retro-table tr:nth-child(even) td
+.retro-toolbar-button:hover
+.retro-toolbar-button:active
+.retro-menu-item:hover
+      */
+  </style>
+  
 </head>
-<body class="retro-body">
-  <div class="retro-window">
-    <div class="retro-titlebar">
-      <span class="retro-titlebar-text">Retro Application</span>
-    </div>
-    
-    <div class="retro-window-content">
-      <h1 class="retro-title">Welcome to Retro UI</h1>
-      
-      <div class="retro-panel">
-        <p class="retro-text">This is a simple retro-styled interface. Enter some text below:</p>
-        
-        <div class="retro-form-row">
-          <label class="retro-label" for="sample-input">Input:</label>
-          <input type="text" id="sample-input" class="retro-input" placeholder="Type something here...">
-        </div>
-        
-        <div class="retro-form-row">
-          <button class="retro-button">Submit</button>
-          <button class="retro-button">Cancel</button>
-        </div>
-      </div>
-    </div>
-    
-    <div class="retro-statusbar">
-      <span>Ready</span>
-    </div>
-  </div>
+<body>
 </body>
 </html>`;
   }
