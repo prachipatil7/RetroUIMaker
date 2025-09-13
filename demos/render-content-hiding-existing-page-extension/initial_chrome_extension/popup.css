@@ -1,0 +1,123 @@
+/* Retro UI Maker Extension Popup - Windows 95/98 Style */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 180px;
+  min-height: 200px;
+  font-family: 'MS Sans Serif', sans-serif;
+  background-color: #c0c0c0;
+  color: #000000;
+  font-size: 11px;
+  border: 2px outset #c0c0c0;
+}
+
+.popup-container {
+  padding: 8px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  border-bottom: 1px solid #808080;
+  padding-bottom: 6px;
+}
+
+.header h1 {
+  font-size: 12px;
+  font-weight: bold;
+  color: #000000;
+  margin: 0;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.control-button {
+  background-color: #c0c0c0;
+  border: 2px outset #c0c0c0;
+  padding: 6px 8px;
+  color: #000000;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  transition: none;
+  min-height: 28px;
+}
+
+.control-button:hover {
+  background-color: #d4d4d4;
+}
+
+.control-button:active {
+  border: 2px inset #c0c0c0;
+  background-color: #b8b8b8;
+}
+
+.control-button.active {
+  border: 2px inset #c0c0c0;
+  background-color: #316ac5;
+  color: white;
+}
+
+.control-button.active:hover {
+  background-color: #2c5aa0;
+}
+
+.reset-button.active {
+  background-color: #808080;
+  color: white;
+}
+
+.reset-button.active:hover {
+  background-color: #606060;
+}
+
+.button-icon {
+  font-size: 14px;
+  display: inline-block;
+  width: 16px;
+  text-align: center;
+}
+
+.button-text {
+  font-size: 11px;
+  font-weight: normal;
+  flex: 1;
+}
+
+/* Loading state */
+.control-button.loading {
+  opacity: 0.6;
+  cursor: default;
+  pointer-events: none;
+}
+
+.control-button.loading .button-icon {
+  animation: none;
+}
+
+/* Disabled state */
+.control-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+  pointer-events: none;
+  color: #808080;
+}

@@ -1,11 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "DOM Toggle Extension",
+  "name": "Retro UI Maker",
   "version": "1.0.0",
-  "description": "Toggle between original webpage content and a custom overlay",
-  "permissions": [
-    "activeTab"
-  ],
+  "description": "Transform any webpage into retro-style UI",
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -21,6 +18,11 @@
     }
   ],
   "action": {
-    "default_title": "DOM Toggle Extension"
-  }
+    "default_title": "Retro UI Maker",
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "activeTab",
+    "storage"
+  ]
 }
