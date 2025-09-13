@@ -330,74 +330,213 @@ async function aiGenerateSimplified() {
       url: location.href,
       hostname: location.hostname,
       description: document.querySelector('meta[name="description"]')?.content || '',
-      keywords: document.querySelector('meta[name="keywords"]')?.content || ''
+      keywords: document.querySelector('meta[name="keywords"]')?.content || '',
+      viewport: document.querySelector('meta[name="viewport"]')?.content || '',
+      ogTitle: document.querySelector('meta[property="og:title"]')?.content || '',
+      ogDescription: document.querySelector('meta[property="og:description"]')?.content || '',
+      ogImage: document.querySelector('meta[property="og:image"]')?.content || ''
     };
     
-    // Extract comprehensive page sections
-    const sections = [];
+    // Extract comprehensive DOM data
+    const domData = {
+      headings: [],
+      buttons: [],
+      links: [],
+      inputs: [],
+      images: [],
+      navigation: [],
+      forms: [],
+      content: []
+    };
     
-    // Get main headings
+    // Get all headings with context
     const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
     for (const h of headings) {
-      if (sections.length >= 8) break;
       const text = h.textContent?.trim();
-      if (text && text.length > 5) {
-        sections.push({
-          heading: h.tagName.toLowerCase(),
+      if (text && text.length > 2) {
+        domData.headings.push({
+          tag: h.tagName.toLowerCase(),
           text: text,
-          type: 'heading'
+          selector: computeSelector(h),
+          level: parseInt(h.tagName.charAt(1)),
+          parent: h.parentElement?.tagName?.toLowerCase() || 'body'
         });
       }
     }
     
-    // Get important buttons and forms
-    const buttons = document.querySelectorAll('button, input[type="submit"], input[type="button"], [role="button"]');
-    for (const btn of buttons) {
-      if (sections.length >= 12) break;
-      const text = btn.textContent?.trim() || btn.value || btn.getAttribute('aria-label') || '';
-      if (text && text.length > 2 && text.length < 50) {
-        sections.push({
-          heading: 'button',
+    // Get all interactive buttons and elements
+    const interactiveElements = document.querySelectorAll(`
+      button, 
+      input[type="submit"], 
+      input[type="button"], 
+      input[type="reset"],
+      [role="button"], 
+      [role="menuitem"],
+      [role="tab"],
+      [role="option"],
+      [onclick],
+      [data-action],
+      [data-toggle],
+      [data-target]
+    `);
+    
+    for (const el of interactiveElements) {
+      const text = el.textContent?.trim() || el.value || el.getAttribute('aria-label') || el.getAttribute('title') || '';
+      if (text && text.length > 1 && text.length < 100) {
+        domData.buttons.push({
+          tag: el.tagName.toLowerCase(),
           text: text,
-          type: 'action',
-          selector: computeSelector(btn)
+          type: el.type || 'button',
+          selector: computeSelector(el),
+          role: el.getAttribute('role') || null,
+          classes: el.className || '',
+          id: el.id || null
         });
       }
     }
     
-    // Get important links
+    // Get all links with context
     const links = document.querySelectorAll('a[href]');
     for (const link of links) {
-      if (sections.length >= 15) break;
       const text = link.textContent?.trim();
-      if (text && text.length > 3 && text.length < 100) {
-        sections.push({
-          heading: 'link',
+      if (text && text.length > 1 && text.length < 200) {
+        domData.links.push({
           text: text,
-          type: 'navigation',
           href: link.href,
-          selector: computeSelector(link)
+          selector: computeSelector(link),
+          classes: link.className || '',
+          id: link.id || null,
+          target: link.target || null,
+          isExternal: !link.href.startsWith(location.origin)
         });
       }
     }
     
-    // Get form inputs
-    const inputs = document.querySelectorAll('input[type="text"], input[type="search"], input[type="email"], textarea');
+    // Get all form inputs
+    const inputs = document.querySelectorAll(`
+      input[type="text"], 
+      input[type="search"], 
+      input[type="email"], 
+      input[type="password"],
+      input[type="url"],
+      input[type="tel"],
+      input[type="number"],
+      textarea, 
+      select
+    `);
+    
     for (const input of inputs) {
-      if (sections.length >= 18) break;
-      const placeholder = input.placeholder || input.name || input.id || '';
-      if (placeholder) {
-        sections.push({
-          heading: 'input',
-          text: placeholder,
-          type: 'form',
-          selector: computeSelector(input)
+      const placeholder = input.placeholder || input.name || input.id || input.getAttribute('aria-label') || '';
+      if (placeholder || input.type === 'search') {
+        domData.inputs.push({
+          tag: input.tagName.toLowerCase(),
+          type: input.type || 'text',
+          placeholder: placeholder,
+          name: input.name || null,
+          id: input.id || null,
+          selector: computeSelector(input),
+          required: input.required || false,
+          classes: input.className || ''
         });
       }
     }
     
-    console.log('Sending to LLM:', { pageMeta, sections });
-    const result = await requestLlMSimplify(pageMeta, sections);
+    // Get important images
+    const images = document.querySelectorAll('img[src]');
+    for (const img of images) {
+      if (domData.images.length >= 10) break;
+      const src = img.src;
+      const alt = img.alt || '';
+      const title = img.title || '';
+      if (src && !src.includes('data:') && !src.includes('pixel')) {
+        domData.images.push({
+          src: src,
+          alt: alt,
+          title: title,
+          selector: computeSelector(img),
+          width: img.naturalWidth || 0,
+          height: img.naturalHeight || 0
+        });
+      }
+    }
+    
+    // Get navigation elements
+    const navElements = document.querySelectorAll(`
+      nav, 
+      [role="navigation"], 
+      [role="menu"], 
+      [role="menubar"],
+      .nav, .navbar, .navigation, .menu, .menubar,
+      header nav, footer nav
+    `);
+    
+    for (const nav of navElements) {
+      const links = nav.querySelectorAll('a');
+      const navLinks = Array.from(links).map(link => ({
+        text: link.textContent?.trim(),
+        href: link.href,
+        selector: computeSelector(link)
+      })).filter(link => link.text && link.text.length > 0);
+      
+      if (navLinks.length > 0) {
+        domData.navigation.push({
+          selector: computeSelector(nav),
+          links: navLinks,
+          classes: nav.className || '',
+          id: nav.id || null
+        });
+      }
+    }
+    
+    // Get forms
+    const forms = document.querySelectorAll('form');
+    for (const form of forms) {
+      const inputs = form.querySelectorAll('input, textarea, select');
+      const formInputs = Array.from(inputs).map(input => ({
+        type: input.type || input.tagName.toLowerCase(),
+        name: input.name || input.id || '',
+        placeholder: input.placeholder || '',
+        selector: computeSelector(input)
+      }));
+      
+      if (formInputs.length > 0) {
+        domData.forms.push({
+          selector: computeSelector(form),
+          action: form.action || '',
+          method: form.method || 'get',
+          inputs: formInputs,
+          classes: form.className || '',
+          id: form.id || null
+        });
+      }
+    }
+    
+    // Get main content areas
+    const contentAreas = document.querySelectorAll(`
+      main, 
+      [role="main"], 
+      article, 
+      section, 
+      .content, 
+      .main-content,
+      .post, .entry, .article
+    `);
+    
+    for (const area of contentAreas) {
+      const text = area.textContent?.trim();
+      if (text && text.length > 50) {
+        domData.content.push({
+          tag: area.tagName.toLowerCase(),
+          text: text.substring(0, 500),
+          selector: computeSelector(area),
+          classes: area.className || '',
+          id: area.id || null
+        });
+      }
+    }
+    
+    console.log('Sending comprehensive DOM data to LLM:', { pageMeta, domData });
+    const result = await requestLlMSimplify(pageMeta, domData);
     console.log('LLM response:', result);
     
     if (result.error) {

@@ -20,7 +20,7 @@ async function handleLlMPick(msg, sendResponse) {
   try {
     const { provider, task, candidates } = msg;
     const actualProvider = provider || 'openai';
-    const key = 'your-api-key';
+    const key = 'YOUR_OPENAI_API_KEY_HERE';
     
     if (!key) {
       sendResponse({ error: 'No API key configured' });
@@ -40,7 +40,7 @@ async function handleLlMPick(msg, sendResponse) {
         body: JSON.stringify({
           model: 'gpt-5',
           messages: [{ role: 'user', content: prompt }],
-          max_tokens: 200
+          max_tokens: 20000
         })
       }).then(r => r.json());
       
@@ -61,7 +61,7 @@ async function handleLlMPick(msg, sendResponse) {
           'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          model: 'claude-3-haiku-20240307',
+          model: 'claude-3.7-sonnet-20250219',
           max_tokens: 200,
           messages: [{ role: 'user', content: prompt }]
         })
@@ -167,73 +167,73 @@ Return JSON only:
 { "selector": "best_selector", "confidence": 0.8, "why": "brief explanation" }`;
 }
 
-function buildSimplifyPrompt(pageMeta, sections) {
-  return `You are an expert UI designer creating a simplified, clean version of this webpage. Generate clean, minimal HTML that captures the essential content and functionality.
+function buildSimplifyPrompt(pageMeta, domData) {
+  return `You are an expert UI designer creating a simplified, clean version of this webpage. Analyze the comprehensive DOM data and generate clean, minimal HTML that captures the essential content and functionality.
 
 PAGE CONTEXT:
 - Title: ${pageMeta.title}
 - URL: ${pageMeta.url}
 - Domain: ${pageMeta.hostname}
 - Description: ${pageMeta.description}
+- OG Title: ${pageMeta.ogTitle}
+- OG Description: ${pageMeta.ogDescription}
+- OG Image: ${pageMeta.ogImage}
 
-PAGE ELEMENTS:
-${sections.map(s => `- ${s.heading.toUpperCase()}: ${s.text.substring(0, 100)} ${s.selector ? `(selector: ${s.selector})` : ''}`).join('\n')}
+COMPREHENSIVE DOM DATA:
 
-TASK: Generate clean HTML for a simplified page view. Include:
-1. Main headline/title
-2. Key content and descriptions
-3. Interactive elements (buttons, forms, search)
-4. Important links
-5. Clean, modern styling
+HEADINGS (${domData.headings.length}):
+${domData.headings.map(h => `- ${h.tag.toUpperCase()} (Level ${h.level}): "${h.text}" (${h.selector})`).join('\n')}
+
+BUTTONS & INTERACTIVE ELEMENTS (${domData.buttons.length}):
+${domData.buttons.map(b => `- ${b.tag.toUpperCase()}${b.type ? `[${b.type}]` : ''}: "${b.text}" (${b.selector}) ${b.role ? `[role=${b.role}]` : ''}`).join('\n')}
+
+LINKS (${domData.links.length}):
+${domData.links.slice(0, 20).map(l => `- "${l.text}" → ${l.href} (${l.selector}) ${l.isExternal ? '[EXTERNAL]' : ''}`).join('\n')}
+
+FORM INPUTS (${domData.inputs.length}):
+${domData.inputs.map(i => `- ${i.tag.toUpperCase()}[${i.type}]: "${i.placeholder}" (${i.selector}) ${i.required ? '[REQUIRED]' : ''}`).join('\n')}
+
+IMAGES (${domData.images.length}):
+${domData.images.map(img => `- "${img.alt || img.title || 'Image'}" → ${img.src} (${img.selector})`).join('\n')}
+
+NAVIGATION (${domData.navigation.length}):
+${domData.navigation.map(nav => `- Navigation: ${nav.links.map(l => `"${l.text}"`).join(', ')} (${nav.selector})`).join('\n')}
+
+FORMS (${domData.forms.length}):
+${domData.forms.map(f => `- Form [${f.method}]: ${f.inputs.map(i => i.type).join(', ')} (${f.selector})`).join('\n')}
+
+CONTENT AREAS (${domData.content.length}):
+${domData.content.map(c => `- ${c.tag.toUpperCase()}: "${c.text.substring(0, 100)}..." (${c.selector})`).join('\n')}
+
+TASK: Generate clean, comprehensive HTML for a simplified page view. Create a complete interface that includes:
+
+1. **Header Section**: Main title, description, key branding
+2. **Search/Input Section**: All search inputs, forms, and primary actions
+3. **Navigation Section**: Main navigation links and menus
+4. **Content Section**: Key headings, text content, and images
+5. **Action Section**: Important buttons, links, and interactive elements
+6. **Footer Section**: Additional links and information
 
 REQUIREMENTS:
-- Use semantic HTML5 elements
-- Include inline CSS for styling (modern, clean design)
-- For interactive elements, add data-selector attributes with the original selectors
+- Use semantic HTML5 elements (header, main, section, nav, article, aside, footer)
+- Include comprehensive inline CSS for modern, responsive design
+- For ALL interactive elements, add data-selector attributes with the original selectors
 - Use data-action="click" for buttons and links
 - Use data-action="search" for search inputs
-- Make it responsive and accessible
-- Keep it concise but comprehensive
-- Use modern CSS (flexbox, grid, etc.)
+- Use data-action="input" for form inputs
+- Make it fully responsive and accessible
+- Include proper ARIA labels and roles
+- Use modern CSS (flexbox, grid, CSS variables)
+- Ensure all important functionality is preserved
+- Create a clean, professional layout that works on any device
 
-Return ONLY the HTML (no markdown, no code blocks):
+Return ONLY the complete HTML (no markdown, no code blocks):
 <div class="simplified-page">
-  <header class="page-header">
-    <h1>Page Title</h1>
-    <p class="description">Brief description</p>
-  </header>
-  
-  <main class="page-content">
-    <section class="search-section">
-      <input type="text" data-selector="input[name=q]" data-action="search" placeholder="Search..." class="search-input">
-      <button data-selector="button[type=submit]" data-action="click" class="search-btn">Search</button>
-    </section>
-    
-    <section class="content-section">
-      <h2>Main Content</h2>
-      <p>Key information here...</p>
-    </section>
-    
-    <section class="actions-section">
-      <button data-selector="button.primary" data-action="click" class="btn-primary">Primary Action</button>
-      <a href="#" data-selector="a.learn-more" data-action="click" class="btn-link">Learn More</a>
-    </section>
-  </main>
+  <!-- Complete HTML structure here -->
 </div>
 
 <style>
-.simplified-page { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-.page-header { text-align: center; margin-bottom: 30px; }
-.page-header h1 { color: #333; margin-bottom: 10px; }
-.description { color: #666; font-size: 16px; }
-.search-section { display: flex; gap: 10px; margin-bottom: 30px; }
-.search-input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
-.search-btn, .btn-primary { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
-.btn-link { color: #007bff; text-decoration: none; padding: 12px 24px; border: 1px solid #007bff; border-radius: 6px; display: inline-block; }
-.content-section { margin-bottom: 30px; }
-.content-section h2 { color: #333; margin-bottom: 15px; }
-.content-section p { color: #666; line-height: 1.6; }
-.actions-section { display: flex; gap: 15px; flex-wrap: wrap; }
+/* Complete CSS here */
 </style>`;
 }
 
