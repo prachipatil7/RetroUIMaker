@@ -120,23 +120,9 @@ class DOMToggleExtension {
     this.generatedContentDiv.id = 'generated-content-overlay';
     this.generatedContentDiv.className = 'generated-content-overlay hidden';
     
-    // Get the original DOM object
-    const originalDOM = window.HTMLGenerator.getOriginalDOM();
+    // Don't generate content here - only when mode buttons are clicked
+    // Content will be generated when user clicks side-by-side or overlay buttons
     
-    // Generate clean HTML page using async LLM pipeline
-    try {
-      this.generatedHtml = await window.HTMLGenerator.generatePageHTML(originalDOM, this.currentIntent, this.generatedHtml);
-    } catch (error) {
-      console.error('Error generating HTML:', error);
-      // Fallback to static content
-      this.generatedHtml = window.HTMLGenerator.generateFallbackHTML(originalDOM, this.currentIntent, this.generatedHtml);
-    }
-    
-    // Wrap it for side-by-side display
-    const wrappedHTML = window.HTMLGenerator.wrapForSideBySide(this.generatedHtml);
-    
-    // Set the wrapped HTML as the content
-    this.generatedContentDiv.innerHTML = wrappedHTML;
     document.body.appendChild(this.generatedContentDiv);
   }
 
@@ -162,7 +148,7 @@ class DOMToggleExtension {
     });
   }
 
-  setMode(mode) {
+  async setMode(mode) {
     // Reset current state first
     this.setNormalMode();
     
@@ -171,10 +157,10 @@ class DOMToggleExtension {
     
     switch (mode) {
       case 'side-by-side':
-        this.setSideBySideMode();
+        await this.setSideBySideMode();
         break;
       case 'overlay':
-        this.setOverlayMode();
+        await this.setOverlayMode();
         break;
       case 'normal':
       default:
@@ -183,8 +169,11 @@ class DOMToggleExtension {
     }
   }
 
-  setSideBySideMode() {
+  async setSideBySideMode() {
     this.currentMode = 'side-by-side';
+    
+    // Generate content first
+    await this.generateContent();
     
     // Hide original content and show in iframe
     this.originalElements.forEach(element => {
@@ -204,8 +193,11 @@ class DOMToggleExtension {
     document.body.classList.add('side-by-side-active');
   }
 
-  setOverlayMode() {
+  async setOverlayMode() {
     this.currentMode = 'overlay';
+    
+    // Generate content first
+    await this.generateContent();
     
     // Hide original content completely
     this.originalElements.forEach(element => {
@@ -236,6 +228,31 @@ class DOMToggleExtension {
     
     // Remove all body classes
     document.body.classList.remove('side-by-side-active', 'overlay-active');
+  }
+
+  async generateContent() {
+    if (!this.generatedContentDiv) {
+      console.warn('Generated content div not available');
+      return;
+    }
+
+    try {
+      // Get the original DOM object
+      const originalDOM = window.HTMLGenerator.getOriginalDOM();
+      
+      // Generate new HTML using current intent (always against base template)
+      this.generatedHtml = await window.HTMLGenerator.generatePageHTML(originalDOM, this.currentIntent, '');
+      
+      // Wrap it for side-by-side display
+      const wrappedHTML = window.HTMLGenerator.wrapForSideBySide(this.generatedHtml);
+      
+      // Update the content
+      this.generatedContentDiv.innerHTML = wrappedHTML;
+      
+      console.log('Content generated with intent:', this.currentIntent);
+    } catch (error) {
+      console.error('Error generating content:', error);
+    }
   }
 
   /**
