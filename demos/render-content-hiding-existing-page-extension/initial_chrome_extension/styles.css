@@ -1,67 +1,4 @@
-/* DOM Toggle Extension Styles */
-
-/* Button Container */
-.retro-extension-buttons {
-  position: fixed;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10000;
-  display: flex;
-  gap: 8px;
-  background-color: rgba(0, 0, 0, 0.8);
-  padding: 8px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-/* Mode Button Styles */
-.retro-mode-button {
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: bold;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-family: 'Arial', sans-serif;
-  min-width: 100px;
-}
-
-.retro-mode-button:hover {
-  background-color: #45a049;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
-}
-
-.retro-mode-button:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.retro-mode-button.active {
-  background-color: #2196F3;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.retro-mode-button.active:hover {
-  background-color: #1976D2;
-}
-
-.retro-mode-button.reset-button {
-  background-color: #FF5722;
-}
-
-.retro-mode-button.reset-button:hover {
-  background-color: #E64A19;
-}
-
-.retro-mode-button.reset-button.active {
-  background-color: #FF5722;
-  opacity: 0.8;
-}
+/* Retro UI Maker Extension Styles */
 
 /* Original Content Elements */
 .original-content-element {
@@ -170,25 +107,9 @@ body.overlay-active {
   background-color: #c0c0c0;
 }
 
-/* Ensure the button container stays on top even when overlay is shown */
-.retro-extension-buttons {
-  z-index: 10001 !important;
-}
 
 /* Responsive design */
 @media (max-width: 768px) {
-  .retro-extension-buttons {
-    flex-direction: column;
-    gap: 4px;
-    padding: 6px;
-  }
-  
-  .retro-mode-button {
-    padding: 8px 12px;
-    font-size: 12px;
-    min-width: 80px;
-  }
-  
   /* Stack vertically on mobile for better usability */
   .original-content-iframe {
     width: 100vw;

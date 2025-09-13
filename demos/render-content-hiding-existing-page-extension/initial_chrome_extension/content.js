@@ -5,9 +5,6 @@ class DOMToggleExtension {
     this.originalPageHTML = '';
     this.originalIframe = null;
     this.generatedContentDiv = null;
-    this.sideBySideButton = null;
-    this.overlayButton = null;
-    this.buttonContainer = null;
     this.sideBarContainer = null;
     this.init();
   }
@@ -23,47 +20,11 @@ class DOMToggleExtension {
 
   setupExtension() {
     this.captureOriginalPageHTML();
-    this.createButtonContainer();
-    this.createButtons();
     this.markOriginalContent();
     this.createSideBarContainer();
     this.createOriginalIframe();
     this.createGeneratedContentDiv();
-    this.attachEventListeners();
-  }
-
-  createButtonContainer() {
-    this.buttonContainer = document.createElement('div');
-    this.buttonContainer.id = 'retro-extension-buttons';
-    this.buttonContainer.className = 'retro-extension-buttons';
-    
-    // Insert at the very top of the body
-    document.body.insertBefore(this.buttonContainer, document.body.firstChild);
-  }
-
-  createButtons() {
-    // Side-by-side button
-    this.sideBySideButton = document.createElement('button');
-    this.sideBySideButton.id = 'side-by-side-btn';
-    this.sideBySideButton.textContent = 'Side-by-Side';
-    this.sideBySideButton.className = 'retro-mode-button';
-    
-    // Overlay button
-    this.overlayButton = document.createElement('button');
-    this.overlayButton.id = 'overlay-btn';
-    this.overlayButton.textContent = 'Retro Overlay';
-    this.overlayButton.className = 'retro-mode-button';
-    
-    // Reset button
-    this.resetButton = document.createElement('button');
-    this.resetButton.id = 'reset-btn';
-    this.resetButton.textContent = 'Reset';
-    this.resetButton.className = 'retro-mode-button reset-button';
-    
-    // Add buttons to container
-    this.buttonContainer.appendChild(this.sideBySideButton);
-    this.buttonContainer.appendChild(this.overlayButton);
-    this.buttonContainer.appendChild(this.resetButton);
+    this.setupMessageListener();
   }
 
   captureOriginalPageHTML() {
@@ -75,8 +36,7 @@ class DOMToggleExtension {
     // Mark all existing content for mode switching
     // Get all direct children of body (except our extension elements)
     this.originalElements = Array.from(document.body.children).filter(
-      child => child.id !== 'retro-extension-buttons' && 
-               child.id !== 'side-by-side-container' &&
+      child => child.id !== 'side-by-side-container' &&
                child.id !== 'generated-content-overlay' &&
                child.id !== 'original-content-iframe'
     );
@@ -95,7 +55,6 @@ class DOMToggleExtension {
   }
 
   createOriginalIframe() {
-    // Create iframe container for the original website
     this.originalIframe = document.createElement('iframe');
     this.originalIframe.id = 'original-content-iframe';
     this.originalIframe.className = 'original-content-iframe hidden';
@@ -106,13 +65,10 @@ class DOMToggleExtension {
       width: 50vw;
       height: 100vh;
       border: none;
-      z-index: 9997;
+      z-index: 9998;
       border-right: 2px solid #333;
+      box-shadow: 5px 0 15px rgba(0, 0, 0, 0.2);
     `;
-    
-    // Set the iframe content to the captured original HTML
-    this.originalIframe.srcdoc = this.originalPageHTML;
-    
     document.body.appendChild(this.originalIframe);
   }
 
@@ -135,22 +91,50 @@ class DOMToggleExtension {
     document.body.appendChild(this.generatedContentDiv);
   }
 
-  attachEventListeners() {
-    this.sideBySideButton.addEventListener('click', () => this.setSideBySideMode());
-    this.overlayButton.addEventListener('click', () => this.setOverlayMode());
-    this.resetButton.addEventListener('click', () => this.setNormalMode());
+  setupMessageListener() {
+    // Listen for messages from popup
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      if (request.action === 'setMode') {
+        this.setMode(request.mode);
+        sendResponse({ success: true, mode: this.currentMode });
+      } else if (request.action === 'getCurrentMode') {
+        sendResponse({ mode: this.currentMode });
+      }
+      return true; // Indicates we will send a response asynchronously
+    });
+  }
+
+  setMode(mode) {
+    // Reset current state first
+    this.setNormalMode();
+    
+    // Set new mode
+    this.currentMode = mode;
+    
+    switch (mode) {
+      case 'side-by-side':
+        this.setSideBySideMode();
+        break;
+      case 'overlay':
+        this.setOverlayMode();
+        break;
+      case 'normal':
+      default:
+        this.setNormalMode();
+        break;
+    }
   }
 
   setSideBySideMode() {
-    this.setNormalMode(); // Reset first
     this.currentMode = 'side-by-side';
     
-    // Hide original content and show iframe
+    // Hide original content and show in iframe
     this.originalElements.forEach(element => {
       element.classList.add('hidden-by-extension');
     });
     
-    // Show original content iframe on the left
+    // Set original HTML in iframe
+    this.originalIframe.srcdoc = this.originalPageHTML;
     this.originalIframe.classList.remove('hidden');
     
     // Show generated content on the right
@@ -160,70 +144,40 @@ class DOMToggleExtension {
     
     // Add side-by-side class to body for global styling
     document.body.classList.add('side-by-side-active');
-    
-    // Update button states
-    this.updateButtonStates();
   }
 
   setOverlayMode() {
-    this.setNormalMode(); // Reset first
     this.currentMode = 'overlay';
     
-    // Hide original content, show generated content as full overlay
+    // Hide original content completely
     this.originalElements.forEach(element => {
       element.classList.add('hidden-by-extension');
     });
+    
+    // Show generated content as full overlay
     this.generatedContentDiv.classList.remove('hidden');
     this.generatedContentDiv.classList.add('overlay-mode');
     
     // Add overlay class to body for global styling
     document.body.classList.add('overlay-active');
-    
-    // Update button states
-    this.updateButtonStates();
   }
 
   setNormalMode() {
     this.currentMode = 'normal';
     
-    // Reset all original elements
+    // Show all original elements
     this.originalElements.forEach(element => {
-      element.classList.remove('side-by-side-left', 'hidden-by-extension');
+      element.classList.remove('hidden-by-extension');
     });
     
-    // Hide the original content iframe
-    this.originalIframe.classList.add('hidden');
-    
-    // Hide generated content
+    // Hide extension content
     this.generatedContentDiv.classList.add('hidden');
     this.generatedContentDiv.classList.remove('side-by-side-mode', 'overlay-mode');
     this.sideBarContainer.classList.add('hidden');
+    this.originalIframe.classList.add('hidden');
     
     // Remove all body classes
     document.body.classList.remove('side-by-side-active', 'overlay-active');
-    
-    // Update button states
-    this.updateButtonStates();
-  }
-
-  updateButtonStates() {
-    // Reset all button states
-    this.sideBySideButton.classList.remove('active');
-    this.overlayButton.classList.remove('active');
-    this.resetButton.classList.remove('active');
-    
-    // Set active state based on current mode
-    switch (this.currentMode) {
-      case 'side-by-side':
-        this.sideBySideButton.classList.add('active');
-        break;
-      case 'overlay':
-        this.overlayButton.classList.add('active');
-        break;
-      case 'normal':
-        this.resetButton.classList.add('active');
-        break;
-    }
   }
 }
 
