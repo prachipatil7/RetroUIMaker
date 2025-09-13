@@ -6,6 +6,9 @@
  * to be easily replaced with LLM-generated content in the future.
  */
 
+// Import createCopy function
+const { createCopy } = require('./create_copy.js');
+
 /**
  * Generates HTML content based on the original DOM using LLM-driven filtering and patching
  * 
@@ -25,10 +28,14 @@ async function generatePageHTML(originalDOM, intent, old_html) {
     // Stage 1: Select relevant DOM elements based on intent
     const { filteredDomJson } = await window.LLMPatch.selectRelevantDomElements(originalDOM, intent || '');
     console.log('Filtered DOM JSON:', filteredDomJson);
+
+    // Stage 1.5: Create copies of the filtered DOM elements
+    const copiedElements = createCopy(filteredDomJson);
+    console.log('Copied elements:', copiedElements);
     
-    // Stage 2: Create and apply HTML patch against base template
+    // Stage 2: Create and apply HTML patch against base template using copied elements
     const patch = await window.LLMPatch.createHtmlPatchFromSelection({ 
-      selectedDom: filteredDomJson, 
+      selectedDom: copiedElements, 
       oldHtml: old_html, 
       intent: intent || '' 
     });
@@ -124,6 +131,7 @@ function wrapForSideBySide(generatedHTML) {
     </div>
   `;
 }
+
 
 /**
  * Extracts the title from DOM object
