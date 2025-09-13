@@ -85,23 +85,31 @@ body.side-by-side-active {
   overflow-x: hidden;
 }
 
-.original-content-element.side-by-side-left {
-  position: relative;
-  width: 50% !important;
-  max-width: 50% !important;
-  float: left;
-  box-sizing: border-box;
-  transform: scale(0.95);
-  transform-origin: top left;
-  overflow-x: auto;
-  border-right: 2px solid #ccc;
-}
-
 /* Overlay mode styles */
 body.overlay-active {
   margin: 0;
   padding: 0;
   overflow: hidden;
+}
+
+/* Original Content Iframe */
+.original-content-iframe {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 50vw;
+  height: 100vh;
+  border: none;
+  z-index: 9997;
+  border-right: 2px solid #333;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.original-content-iframe.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* Side-by-side container */
@@ -179,5 +187,21 @@ body.overlay-active {
     padding: 8px 12px;
     font-size: 12px;
     min-width: 80px;
+  }
+  
+  /* Stack vertically on mobile for better usability */
+  .original-content-iframe {
+    width: 100vw;
+    height: 50vh;
+    border-right: none;
+    border-bottom: 2px solid #333;
+  }
+  
+  .generated-content-overlay.side-by-side-mode {
+    top: 50vh;
+    width: 100vw;
+    height: 50vh;
+    border-left: none;
+    border-top: 2px solid #333;
   }
 }

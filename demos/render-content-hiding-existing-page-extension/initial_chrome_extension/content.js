@@ -2,6 +2,8 @@ class DOMToggleExtension {
   constructor() {
     this.currentMode = 'normal'; // 'normal', 'side-by-side', 'overlay'
     this.originalElements = [];
+    this.originalPageHTML = '';
+    this.originalIframe = null;
     this.generatedContentDiv = null;
     this.sideBySideButton = null;
     this.overlayButton = null;
@@ -20,10 +22,12 @@ class DOMToggleExtension {
   }
 
   setupExtension() {
+    this.captureOriginalPageHTML();
     this.createButtonContainer();
     this.createButtons();
     this.markOriginalContent();
     this.createSideBarContainer();
+    this.createOriginalIframe();
     this.createGeneratedContentDiv();
     this.attachEventListeners();
   }
@@ -62,13 +66,19 @@ class DOMToggleExtension {
     this.buttonContainer.appendChild(this.resetButton);
   }
 
+  captureOriginalPageHTML() {
+    // Capture the complete HTML of the original page before any modifications
+    this.originalPageHTML = document.documentElement.outerHTML;
+  }
+
   markOriginalContent() {
     // Mark all existing content for mode switching
     // Get all direct children of body (except our extension elements)
     this.originalElements = Array.from(document.body.children).filter(
       child => child.id !== 'retro-extension-buttons' && 
                child.id !== 'side-by-side-container' &&
-               child.id !== 'generated-content-overlay'
+               child.id !== 'generated-content-overlay' &&
+               child.id !== 'original-content-iframe'
     );
     
     // Add our class to each original element for styling control
@@ -82,6 +92,28 @@ class DOMToggleExtension {
     this.sideBarContainer.id = 'side-by-side-container';
     this.sideBarContainer.className = 'side-by-side-container hidden';
     document.body.appendChild(this.sideBarContainer);
+  }
+
+  createOriginalIframe() {
+    // Create iframe container for the original website
+    this.originalIframe = document.createElement('iframe');
+    this.originalIframe.id = 'original-content-iframe';
+    this.originalIframe.className = 'original-content-iframe hidden';
+    this.originalIframe.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 50vw;
+      height: 100vh;
+      border: none;
+      z-index: 9997;
+      border-right: 2px solid #333;
+    `;
+    
+    // Set the iframe content to the captured original HTML
+    this.originalIframe.srcdoc = this.originalPageHTML;
+    
+    document.body.appendChild(this.originalIframe);
   }
 
   createGeneratedContentDiv() {
@@ -113,10 +145,15 @@ class DOMToggleExtension {
     this.setNormalMode(); // Reset first
     this.currentMode = 'side-by-side';
     
-    // Activate side-by-side view
+    // Hide original content and show iframe
     this.originalElements.forEach(element => {
-      element.classList.add('side-by-side-left');
+      element.classList.add('hidden-by-extension');
     });
+    
+    // Show original content iframe on the left
+    this.originalIframe.classList.remove('hidden');
+    
+    // Show generated content on the right
     this.generatedContentDiv.classList.remove('hidden');
     this.generatedContentDiv.classList.add('side-by-side-mode');
     this.sideBarContainer.classList.remove('hidden');
@@ -153,6 +190,9 @@ class DOMToggleExtension {
     this.originalElements.forEach(element => {
       element.classList.remove('side-by-side-left', 'hidden-by-extension');
     });
+    
+    // Hide the original content iframe
+    this.originalIframe.classList.add('hidden');
     
     // Hide generated content
     this.generatedContentDiv.classList.add('hidden');

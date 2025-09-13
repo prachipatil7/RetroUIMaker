@@ -1,23 +1,25 @@
 # DOM Toggle Chrome Extension
 
-A clean and well-organized Chrome extension that allows users to toggle between the original webpage content and a custom "Hello World" overlay.
+A clean and well-organized Chrome extension that allows users to view the original webpage alongside a custom retro-styled interface with proper iframe-based sizing.
 
 ## Features
 
-- **Toggle Button**: Fixed position button at the top of any webpage
-- **DOM Manipulation**: Wraps original content in a container for easy show/hide functionality
+- **Multiple View Modes**: Side-by-side, overlay, and normal viewing modes
+- **Iframe-Based Original Content**: Original website displayed in iframe for precise sizing control
+- **Side-by-Side View**: Original content and generated content displayed simultaneously
 - **Smooth Transitions**: CSS transitions for a polished user experience
-- **Responsive Design**: Works on both desktop and mobile viewports
+- **Responsive Design**: Works on both desktop and mobile viewports with adaptive layouts
 - **Clean Architecture**: Object-oriented JavaScript with clear separation of concerns
 
 ## How It Works
 
 1. **Initialization**: The extension injects a content script that runs on all web pages
-2. **Content Marking**: Original page elements are marked with CSS classes for show/hide control
-3. **Toggle Creation**: A toggle button is added at the top of the page
-4. **Overlay System**: A "Hello World" overlay is created but initially hidden
-5. **State Management**: Clicking the toggle switches between original content and overlay
-6. **CSP Compliance**: Avoids moving DOM elements to prevent Content Security Policy violations
+2. **Content Capture**: Original page HTML is captured before any modifications
+3. **Iframe Creation**: Original content is displayed in an iframe for precise sizing
+4. **Mode Buttons**: Three buttons are added for different viewing modes
+5. **Side-by-Side View**: Original content (iframe) on left, generated content on right
+6. **State Management**: Mode switching with smooth transitions and responsive layouts
+7. **CSP Compliance**: Iframe-based approach avoids direct DOM manipulation issues
 
 ## File Structure
 
@@ -40,10 +42,11 @@ initial_chrome_extension/
 ## Usage
 
 1. Visit any website
-2. You'll see a green "Toggle View" button at the top of the page
-3. Click to switch to the "Hello World" overlay
-4. Click "Show Original" to return to the original content
-5. The toggle state persists until page refresh
+2. You'll see three buttons at the top of the page: "Side-by-Side", "Retro Overlay", and "Reset"
+3. **Side-by-Side**: Shows original website in iframe on left, generated retro content on right
+4. **Retro Overlay**: Shows only the generated retro content in full screen
+5. **Reset**: Returns to normal website view
+6. The view mode persists until page refresh or mode change
 
 ## Technical Details
 
@@ -59,9 +62,12 @@ initial_chrome_extension/
 **Content Script (content.js):**
 - `init()`: Initializes the extension and waits for DOM ready
 - `setupExtension()`: Creates all UI elements and sets up event listeners
+- `captureOriginalPageHTML()`: Captures complete HTML before modifications
+- `createOriginalIframe()`: Creates iframe container for original content
 - `markOriginalContent()`: Marks original DOM elements with CSS classes for control
-- `createHelloWorldDiv()`: Creates overlay using generated HTML content
-- `toggleView()`: Switches between original content and overlay
+- `setSideBySideMode()`: Displays original content in iframe alongside generated content
+- `setOverlayMode()`: Shows only generated content in full screen
+- `setNormalMode()`: Returns to original website view
 
 **HTML Generator (htmlGenerator.js):**
 - `generateOverlayHTML(originalHTML)`: Generates complete HTML with inline CSS based on original content
