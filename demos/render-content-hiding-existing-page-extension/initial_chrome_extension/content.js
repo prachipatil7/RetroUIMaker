@@ -6,6 +6,8 @@ class DOMToggleExtension {
     this.originalIframe = null;
     this.generatedContentDiv = null;
     this.sideBarContainer = null;
+    this.generatedHtml = ''; // Store generated HTML for patching
+    this.currentIntent = ''; // Store current user intent
     this.init();
   }
 
@@ -18,12 +20,12 @@ class DOMToggleExtension {
     }
   }
 
-  setupExtension() {
+  async setupExtension() {
     this.captureOriginalPageHTML();
     this.markOriginalContent();
     this.createSideBarContainer();
     this.createOriginalIframe();
-    this.createGeneratedContentDiv();
+    await this.createGeneratedContentDiv();
     this.setupMessageListener();
   }
 
@@ -72,7 +74,7 @@ class DOMToggleExtension {
     document.body.appendChild(this.originalIframe);
   }
 
-  createGeneratedContentDiv() {
+  async createGeneratedContentDiv() {
     this.generatedContentDiv = document.createElement('div');
     this.generatedContentDiv.id = 'generated-content-overlay';
     this.generatedContentDiv.className = 'generated-content-overlay hidden';
@@ -80,11 +82,17 @@ class DOMToggleExtension {
     // Get the original DOM object
     const originalDOM = window.HTMLGenerator.getOriginalDOM();
     
-    // Generate clean HTML page (what LLM would generate)
-    const cleanGeneratedHTML = window.HTMLGenerator.generatePageHTML(originalDOM, '', '');
+    // Generate clean HTML page using async LLM pipeline
+    try {
+      this.generatedHtml = await window.HTMLGenerator.generatePageHTML(originalDOM, this.currentIntent, this.generatedHtml);
+    } catch (error) {
+      console.error('Error generating HTML:', error);
+      // Fallback to static content
+      this.generatedHtml = window.HTMLGenerator.generateFallbackHTML(originalDOM);
+    }
     
     // Wrap it for side-by-side display
-    const wrappedHTML = window.HTMLGenerator.wrapForSideBySide(cleanGeneratedHTML);
+    const wrappedHTML = window.HTMLGenerator.wrapForSideBySide(this.generatedHtml);
     
     // Set the wrapped HTML as the content
     this.generatedContentDiv.innerHTML = wrappedHTML;
@@ -99,6 +107,12 @@ class DOMToggleExtension {
         sendResponse({ success: true, mode: this.currentMode });
       } else if (request.action === 'getCurrentMode') {
         sendResponse({ mode: this.currentMode });
+      } else if (request.action === 'setIntent') {
+        this.setIntent(request.intent);
+        sendResponse({ success: true, intent: this.currentIntent });
+      } else if (request.action === 'regenerateContent') {
+        this.regenerateContent();
+        sendResponse({ success: true });
       }
       return true; // Indicates we will send a response asynchronously
     });
@@ -178,6 +192,43 @@ class DOMToggleExtension {
     
     // Remove all body classes
     document.body.classList.remove('side-by-side-active', 'overlay-active');
+  }
+
+  /**
+   * Set user intent for content generation
+   * @param {string} intent - User intent
+   */
+  setIntent(intent) {
+    this.currentIntent = intent || '';
+    console.log('Intent set to:', this.currentIntent);
+  }
+
+  /**
+   * Regenerate content with current intent
+   */
+  async regenerateContent() {
+    if (!this.generatedContentDiv) {
+      console.warn('Generated content div not available');
+      return;
+    }
+
+    try {
+      // Get the original DOM object
+      const originalDOM = window.HTMLGenerator.getOriginalDOM();
+      
+      // Generate new HTML using current intent and existing HTML
+      this.generatedHtml = await window.HTMLGenerator.generatePageHTML(originalDOM, this.currentIntent, this.generatedHtml);
+      
+      // Wrap it for side-by-side display
+      const wrappedHTML = window.HTMLGenerator.wrapForSideBySide(this.generatedHtml);
+      
+      // Update the content
+      this.generatedContentDiv.innerHTML = wrappedHTML;
+      
+      console.log('Content regenerated with intent:', this.currentIntent);
+    } catch (error) {
+      console.error('Error regenerating content:', error);
+    }
   }
 }
 
