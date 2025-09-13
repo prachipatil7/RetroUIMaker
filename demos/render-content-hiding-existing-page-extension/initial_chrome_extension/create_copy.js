@@ -7,23 +7,37 @@ function createCopy(domElements) {
     const duplicatedElements = [];
     
     // Convert NodeList to Array if needed
-    const elementsArray = Array.from(domElements);
+    const elementsArray = domElements.elements;
+    console.log('domElements', domElements);
+    console.log('elementsArray', elementsArray);
     
     elementsArray.forEach(originalElement => {
         // Create a new element of the same type
-        const newElement = document.createElement(originalElement.tagName.toLowerCase());
+        const newElement = document.createElement(originalElement.tag.toLowerCase());
         
-        // Copy only text content (no attributes)
+        // Copy text content
         if (originalElement.textContent) {
             newElement.textContent = originalElement.textContent;
         }
         
+        // Copy all attributes except "class"
+        if (originalElement) {
+            Object.keys(originalElement).forEach(attrName => {
+
+                if (attrName !== 'class') {
+                    newElement[attrName] = originalElement[attrName];
+                }
+            });
+        }
+        
         // Add appropriate event handlers based on element type and existing handlers
         addEventHandlers(originalElement, newElement);
+
+        console.log('newElement', newElement);
         
         duplicatedElements.push(newElement);
     });
-    
+    console.log('duplicatedElements', duplicatedElements);
     return duplicatedElements;
 }
 
@@ -33,11 +47,7 @@ function createCopy(domElements) {
  * @param {Element} newElement - The new DOM element to add handlers to
  */
 function addEventHandlers(originalElement, newElement) {
-    const tagName = originalElement.tagName.toLowerCase();
-    
-    // Check if original element has any event handlers
-    const hasOnClick = originalElement.onclick !== null || originalElement.hasAttribute('onclick');
-    const hasOnChange = originalElement.onchange !== null || originalElement.hasAttribute('onchange');
+    const tagName = originalElement.tag.toLowerCase();
     
     // Get selector from original element (assuming it has a selector property)
     const selector = originalElement.selector || '';
@@ -61,31 +71,16 @@ function addEventHandlers(originalElement, newElement) {
                 selector: selector
             }, '*');
         };
-    } else {
-        // For other elements, copy existing handlers
-        if (hasOnClick) {
-            newElement.onclick = function() {
-                // Send message to parent window to click element in original iframe
-                parent.postMessage({
-                    type: 'CLICK_ELEMENT',
-                    selector: selector
-                }, '*');
-            };
-        }
-        
-        if (hasOnChange) {
-            newElement.onchange = function() {
-                // Send message to parent window to change element in original iframe
-                parent.postMessage({
-                    type: 'CHANGE_ELEMENT',
-                    selector: selector
-                }, '*');
-            };
-        }
     }
 }
 
 // Export the function for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { createCopy, addEventHandlers };
+} else {
+    // Browser environment - attach to window for Chrome extension
+    console.log('🔧 create_copy.js: Attaching functions to window');
+    window.createCopy = createCopy;
+    window.addEventHandlers = addEventHandlers;
+    console.log('🔧 create_copy.js: Functions attached - createCopy:', typeof window.createCopy);
 }

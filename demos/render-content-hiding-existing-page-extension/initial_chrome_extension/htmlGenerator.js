@@ -6,8 +6,7 @@
  * to be easily replaced with LLM-generated content in the future.
  */
 
-// Import createCopy function
-const { createCopy } = require('./create_copy.js');
+// createCopy function is available globally from create_copy.js loaded before this script
 // Cache to prevent duplicate LLM calls
 const contentCache = new Map();
 
@@ -53,7 +52,12 @@ async function generatePageHTML(originalDOM, intent, old_html) {
     console.log('Filtered DOM JSON:', filteredDomJson);
 
     // Stage 1.5: Create copies of the filtered DOM elements
-    const copiedElements = createCopy(filteredDomJson);
+    // console.log('🔍 Checking createCopy availability:', {
+    //   'typeof createCopy': typeof createCopy,
+    //   'typeof window.createCopy': typeof window.createCopy,
+    //   'createCopy in window': 'createCopy' in window
+    // });
+    const copiedElements = window.createCopy(filteredDomJson);
     console.log('Copied elements:', copiedElements);
     
     // Stage 2: Create and apply HTML patch against base template using copied elements
