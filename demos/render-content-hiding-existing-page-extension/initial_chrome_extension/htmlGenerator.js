@@ -19,12 +19,9 @@ async function generatePageHTML(originalDOM, intent, old_html) {
     // Check if LLMPatch is available
     if (!window.LLMPatch) {
       console.warn('LLMPatch not available, falling back to static content');
-      return generateFallbackHTML(originalDOM);
+      return generateFallbackHTML(originalDOM, intent, old_html);
     }
 
-    // Load the base template
-    const baseTemplate = await window.LLMPatch.loadBaseTemplate();
-    
     // Stage 1: Select relevant DOM elements based on intent
     const { filteredDomJson } = await window.LLMPatch.selectRelevantDomElements(originalDOM, intent || '');
     console.log('Filtered DOM JSON:', filteredDomJson);
@@ -32,13 +29,13 @@ async function generatePageHTML(originalDOM, intent, old_html) {
     // Stage 2: Create and apply HTML patch against base template
     const patch = await window.LLMPatch.createHtmlPatchFromSelection({ 
       selectedDom: filteredDomJson, 
-      oldHtml: baseTemplate, 
+      oldHtml: old_html, 
       intent: intent || '' 
     });
     
     console.log('Patch:', patch);
     // Apply the patch to get updated HTML
-    const updatedHtml = window.LLMPatch.applyHtmlPatch(baseTemplate, patch);
+    const updatedHtml = window.LLMPatch.applyHtmlPatch(old_html, patch);
     console.log('Updated HTML:', updatedHtml);
     return updatedHtml;
   } catch (error) {
@@ -50,7 +47,7 @@ async function generatePageHTML(originalDOM, intent, old_html) {
       return baseTemplate;
     } catch (templateError) {
       console.error('Failed to load base template:', templateError);
-      return generateFallbackHTML(originalDOM);
+      return generateFallbackHTML(originalDOM, intent, old_html);
     }
   }
 }
