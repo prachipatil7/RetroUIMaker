@@ -13,21 +13,68 @@ let BUTTON_SELECTOR_CONFIG = {
 };
 
 /**
- * Generates HTML content based on the original DOM
- * This function will be replaced with LLM-generated content
+ * Generates HTML content based on the original DOM using LLM-driven filtering and patching
  * 
  * @param {Document} originalDOM - The original DOM object of the page
- * @returns {string} Clean HTML content without layout constraints
+ * @param {string} intent - The intent or purpose for the generated UI
+ * @param {string} old_html - Previous HTML version for comparison/iteration
+ * @returns {Promise<string>} Clean HTML content without layout constraints
  */
-function generatePageHTML(originalDOM) {
-  // For now, we'll create a static hello world page
-  // Later this can be replaced with LLM-generated content based on originalDOM
-  
+async function generatePageHTML(originalDOM, intent, old_html) {
+  try {
+    // Check if LLMPatch is available
+    if (!window.LLMPatch) {
+      console.warn('LLMPatch not available, falling back to static content');
+      return generateFallbackHTML(originalDOM);
+    }
+
+    // Load the base template
+    const baseTemplate = await window.LLMPatch.loadBaseTemplate();
+    
+    // Stage 1: Select relevant DOM elements based on intent
+    const { filteredDomJson } = await window.LLMPatch.selectRelevantDomElements(originalDOM, intent || '');
+    console.log('Filtered DOM JSON:', filteredDomJson);
+    
+    // Stage 2: Create and apply HTML patch against base template
+    const patch = await window.LLMPatch.createHtmlPatchFromSelection({ 
+      selectedDom: filteredDomJson, 
+      oldHtml: baseTemplate, 
+      intent: intent || '' 
+    });
+    
+    console.log('Patch:', patch);
+    // Apply the patch to get updated HTML
+    const updatedHtml = window.LLMPatch.applyHtmlPatch(baseTemplate, patch);
+    console.log('Updated HTML:', updatedHtml);
+    return updatedHtml;
+  } catch (error) {
+    console.error('Error in LLM pipeline, falling back to static content:', error);
+    
+    // Try to load base template as fallback
+    try {
+      const baseTemplate = await window.LLMPatch.loadBaseTemplate();
+      return baseTemplate;
+    } catch (templateError) {
+      console.error('Failed to load base template:', templateError);
+      return generateFallbackHTML(originalDOM);
+    }
+  }
+}
+
+/**
+ * Generate fallback HTML when LLM pipeline fails
+ * @param {Document} originalDOM - The original DOM object
+ * @returns {string} Fallback HTML content
+ */
+function generateFallbackHTML(originalDOM, intent, old_html) {
   // Extract some basic info from the original DOM for context
   const originalTitle = extractTitleFromDOM(originalDOM);
   const originalDomain = window.location.hostname;
+
+
+  console.log('old_html', old_html);
+  console.log('intent', intent);
   
-  // LLM will generate clean HTML using retro classes - no inline styles
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -39,148 +86,15 @@ function generatePageHTML(originalDOM) {
     <body class="retro-body">
       <div class="retro-window">
         <div class="retro-window-header">
-          <span>Generated Retro UI - ${originalTitle}</span>
-          <div>
-            <button class="retro-button" style="font-size: 10px; padding: 0 4px;">_</button>
-            <button class="retro-button" style="font-size: 10px; padding: 0 4px;">□</button>
-            <button class="retro-button" style="font-size: 10px; padding: 0 4px;">×</button>
-          </div>
+          <span>Generated UI - ${originalTitle}</span>
         </div>
-        
         <div class="retro-window-content">
-          <div class="retro-menubar">
-            <span class="retro-menu-item">File</span>
-            <span class="retro-menu-item">Edit</span>
-            <span class="retro-menu-item">View</span>
-            <span class="retro-menu-item">Help</span>
+          <div class="retro-statusbar">
+            Ready | ${new Date().toLocaleString()} | Generated from: ${originalDomain}
           </div>
-          
-          <div class="retro-toolbar">
-            <div class="retro-toolbar-button">📁</div>
-            <div class="retro-toolbar-button">💾</div>
-            <div class="retro-toolbar-separator"></div>
-            <div class="retro-toolbar-button">✂️</div>
-            <div class="retro-toolbar-button">📋</div>
-            <div class="retro-toolbar-button">📄</div>
-          </div>
-          
-          <h1 class="retro-title">Original Page Analysis</h1>
-          
-          <div class="retro-groupbox">
-            <div class="retro-groupbox-title">Page Information</div>
-            <div class="retro-form-row">
-              <label class="retro-form-label retro-label">Domain:</label>
-              <input type="text" class="retro-input retro-form-input" value="${originalDomain}" readonly>
-            </div>
-            <div class="retro-form-row">
-              <label class="retro-form-label retro-label">Title:</label>
-              <input type="text" class="retro-input retro-form-input" value="${originalTitle}" readonly>
-            </div>
-          </div>
-          
-          <div class="retro-panel">
-            <h2 class="retro-subtitle">Generated Content</h2>
-            <p class="retro-text">
-              This is a retro-styled interface generated from the original webpage content.
-              The LLM will create similar interfaces using the retro CSS classes.
-            </p>
-            
-            <div class="retro-form-row">
-              <button class="retro-button" onclick="clickOriginalButton()">${BUTTON_SELECTOR_CONFIG.buttonText}</button>
-              <button class="retro-button retro-disabled" disabled>Advanced</button>
-            </div>
-          </div>
-          
-          <div class="retro-groupbox">
-            <div class="retro-groupbox-title">Button Configuration</div>
-            <div class="retro-form-row">
-              <label class="retro-form-label retro-label">Button Selector:</label>
-              <input type="text" class="retro-input retro-form-input" id="buttonSelector" 
-                     value="${BUTTON_SELECTOR_CONFIG.buttonSelector}" 
-                     placeholder="Enter CSS selector for button">
-            </div>
-            <div class="retro-form-row">
-              <label class="retro-form-label retro-label">Button Text:</label>
-              <input type="text" class="retro-input retro-form-input" id="buttonText" 
-                     value="${BUTTON_SELECTOR_CONFIG.buttonText}" 
-                     placeholder="Display text for button">
-            </div>
-            <div class="retro-form-row">
-              <button class="retro-button" onclick="updateButtonConfig()">Update Configuration</button>
-              <button class="retro-button" onclick="testButtonSelector()">Test Selector</button>
-            </div>
-          </div>
-          
-          <div class="retro-groupbox">
-            <div class="retro-groupbox-title">Sample Controls</div>
-            <div class="retro-form-row">
-              <input type="checkbox" class="retro-checkbox" id="sample1">
-              <label for="sample1" class="retro-label">Enable retro mode</label>
-            </div>
-            <div class="retro-form-row">
-              <input type="radio" class="retro-radio" name="style" id="win95">
-              <label for="win95" class="retro-label">Windows 95</label>
-              <input type="radio" class="retro-radio" name="style" id="win98" checked>
-              <label for="win98" class="retro-label">Windows 98</label>
-            </div>
-            <div class="retro-form-row">
-              <label class="retro-form-label retro-label">Theme:</label>
-              <select class="retro-select retro-form-input">
-                <option>Classic Gray</option>
-                <option>High Contrast</option>
-                <option>Desert</option>
-              </select>
-            </div>
-          </div>
-          
-          <div class="retro-progressbar">
-            <div class="retro-progressbar-fill" style="width: 75%;"></div>
-          </div>
-          <p class="retro-text" style="margin-top: 4px;">Processing: 75% complete</p>
+          <p class="retro-text">LLM processing unavailable. Using fallback interface.</p>
         </div>
       </div>
-      
-      <div class="retro-statusbar">
-        Ready | ${new Date().toLocaleString()} | Generated from: ${originalDomain}
-      </div>
-      
-      <script>
-        function clickOriginalButton() {
-          // Send message to parent window (content script) to click the original button
-          window.parent.postMessage({
-            type: 'CLICK_ORIGINAL_BUTTON',
-            buttonSelector: '${BUTTON_SELECTOR_CONFIG.buttonSelector}'
-          }, '*');
-        }
-        
-        function updateButtonConfig() {
-          const selectorInput = document.getElementById('buttonSelector');
-          const textInput = document.getElementById('buttonText');
-          
-          if (selectorInput && textInput) {
-            // Send message to parent window to update the configuration
-            window.parent.postMessage({
-              type: 'UPDATE_BUTTON_CONFIG',
-              buttonSelector: selectorInput.value,
-              buttonText: textInput.value
-            }, '*');
-            
-            alert('Button configuration updated!');
-          }
-        }
-        
-        function testButtonSelector() {
-          const selectorInput = document.getElementById('buttonSelector');
-          
-          if (selectorInput) {
-            // Send message to parent window to test the selector
-            window.parent.postMessage({
-              type: 'TEST_BUTTON_SELECTOR',
-              buttonSelector: selectorInput.value
-            }, '*');
-          }
-        }
-      </script>
     </body>
     </html>
   `;

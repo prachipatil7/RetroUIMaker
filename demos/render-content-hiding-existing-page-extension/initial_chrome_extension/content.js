@@ -7,6 +7,8 @@ class DOMToggleExtension {
     this.originalIframe = null;
     this.generatedContentDiv = null;
     this.sideBarContainer = null;
+    this.generatedHtml = this.getInitialHtml(); // Store initial HTML for patching
+    this.currentIntent = 'I want to look through my past orders on amazon'; // Store current user intent with default
     this.init();
   }
 
@@ -19,12 +21,53 @@ class DOMToggleExtension {
     }
   }
 
+  getInitialHtml() {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retro UI</title>
+  <link rel="stylesheet" href="${chrome.runtime.getURL('retro-theme.css')}">
+</head>
+<body class="retro-body">
+  <div class="retro-window">
+    <div class="retro-titlebar">
+      <span class="retro-titlebar-text">Retro Application</span>
+    </div>
+    
+    <div class="retro-window-content">
+      <h1 class="retro-title">Welcome to Retro UI</h1>
+      
+      <div class="retro-panel">
+        <p class="retro-text">This is a simple retro-styled interface. Enter some text below:</p>
+        
+        <div class="retro-form-row">
+          <label class="retro-label" for="sample-input">Input:</label>
+          <input type="text" id="sample-input" class="retro-input" placeholder="Type something here...">
+        </div>
+        
+        <div class="retro-form-row">
+          <button class="retro-button">Submit</button>
+          <button class="retro-button">Cancel</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="retro-statusbar">
+      <span>Ready</span>
+    </div>
+  </div>
+</body>
+</html>`;
+  }
+
   async setupExtension() {
     this.captureOriginalPageHTML();
     this.markOriginalContent();
     this.createSideBarContainer();
     this.createOriginalIframe();
-    this.createGeneratedContentDiv();
+    await this.createGeneratedContentDiv();
     this.setupMessageListener();
     
     // Load and apply default mode
@@ -76,7 +119,7 @@ class DOMToggleExtension {
     document.body.appendChild(this.originalIframe);
   }
 
-  createGeneratedContentDiv() {
+  async createGeneratedContentDiv() {
     this.generatedContentDiv = document.createElement('div');
     this.generatedContentDiv.id = 'generated-content-overlay';
     this.generatedContentDiv.className = 'generated-content-overlay hidden';
@@ -84,11 +127,17 @@ class DOMToggleExtension {
     // Get the original DOM object
     const originalDOM = window.HTMLGenerator.getOriginalDOM();
     
-    // Generate clean HTML page (what LLM would generate)
-    const cleanGeneratedHTML = window.HTMLGenerator.generatePageHTML(originalDOM);
+    // Generate clean HTML page using async LLM pipeline
+    try {
+      this.generatedHtml = await window.HTMLGenerator.generatePageHTML(originalDOM, this.currentIntent, '');
+    } catch (error) {
+      console.error('Error generating HTML:', error);
+      // Fallback to static content
+      this.generatedHtml = window.HTMLGenerator.generateFallbackHTML(originalDOM);
+    }
     
     // Wrap it for side-by-side display
-    const wrappedHTML = window.HTMLGenerator.wrapForSideBySide(cleanGeneratedHTML);
+    const wrappedHTML = window.HTMLGenerator.wrapForSideBySide(this.generatedHtml);
     
     // Set the wrapped HTML as the content
     this.generatedContentDiv.innerHTML = wrappedHTML;
@@ -99,6 +148,9 @@ class DOMToggleExtension {
     // Listen for messages from popup
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (request.action === 'setMode') {
+        if (request.intent !== undefined) {
+          this.currentIntent = request.intent;
+        }
         this.setMode(request.mode);
         sendResponse({ success: true, mode: this.currentMode });
       } else if (request.action === 'getCurrentMode') {
@@ -106,6 +158,12 @@ class DOMToggleExtension {
       } else if (request.action === 'setDefaultMode') {
         this.setDefaultMode(request.defaultMode);
         sendResponse({ success: true, defaultMode: this.defaultMode });
+      } else if (request.action === 'setIntent') {
+        this.setIntent(request.intent);
+        sendResponse({ success: true, intent: this.currentIntent });
+      } else if (request.action === 'regenerateContent') {
+        this.regenerateContent();
+        sendResponse({ success: true });
       }
       return true; // Indicates we will send a response asynchronously
     });
@@ -386,6 +444,38 @@ class DOMToggleExtension {
       }
       
       console.log('Content regenerated with new button configuration');
+  /**
+   * Set user intent for content generation
+   * @param {string} intent - User intent
+   */
+  setIntent(intent) {
+    this.currentIntent = intent || '';
+    console.log('Intent set to:', this.currentIntent);
+  }
+
+  /**
+   * Regenerate content with current intent
+   */
+  async regenerateContent() {
+    if (!this.generatedContentDiv) {
+      console.warn('Generated content div not available');
+      return;
+    }
+
+    try {
+      // Get the original DOM object
+      const originalDOM = window.HTMLGenerator.getOriginalDOM();
+      
+      // Generate new HTML using current intent (always against base template)
+      this.generatedHtml = await window.HTMLGenerator.generatePageHTML(originalDOM, this.currentIntent, '');
+      
+      // Wrap it for side-by-side display
+      const wrappedHTML = window.HTMLGenerator.wrapForSideBySide(this.generatedHtml);
+      
+      // Update the content
+      this.generatedContentDiv.innerHTML = wrappedHTML;
+      
+      console.log('Content regenerated with intent:', this.currentIntent);
     } catch (error) {
       console.error('Error regenerating content:', error);
     }
