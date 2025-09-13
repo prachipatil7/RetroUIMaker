@@ -6,6 +6,17 @@
  * to be easily replaced with LLM-generated content in the future.
  */
 
+// Cache to prevent duplicate LLM calls
+const contentCache = new Map();
+
+/**
+ * Clear the content cache
+ */
+function clearContentCache() {
+  contentCache.clear();
+  console.log('🗑️ Content cache cleared');
+}
+
 /**
  * Generates HTML content based on the original DOM using LLM-driven filtering and patching
  * 
@@ -15,11 +26,24 @@
  * @returns {Promise<string>} Clean HTML content without layout constraints
  */
 async function generatePageHTML(originalDOM, intent, old_html) {
+  console.log('🔄 generatePageHTML called with intent:', intent, 'old_html length:', old_html?.length || 0);
+  
+  // Create cache key based on intent and page URL
+  const cacheKey = `${window.location.href}_${intent || 'default'}`;
+  
+  // Check cache first
+  if (contentCache.has(cacheKey)) {
+    console.log('📦 Using cached content for:', cacheKey);
+    return contentCache.get(cacheKey);
+  }
+  
   try {
     // Check if LLMPatch is available
     if (!window.LLMPatch) {
       console.warn('LLMPatch not available, falling back to static content');
-      return generateFallbackHTML(originalDOM, intent, old_html);
+      const fallbackContent = generateFallbackHTML(originalDOM, intent, old_html);
+      contentCache.set(cacheKey, fallbackContent);
+      return fallbackContent;
     }
 
     // Stage 1: Select relevant DOM elements based on intent
@@ -37,6 +61,11 @@ async function generatePageHTML(originalDOM, intent, old_html) {
     // Apply the patch to get updated HTML
     const updatedHtml = window.LLMPatch.applyHtmlPatch(old_html, patch);
     console.log('Updated HTML:', updatedHtml);
+    
+    // Cache the result
+    contentCache.set(cacheKey, updatedHtml);
+    console.log('💾 Cached content for:', cacheKey);
+    
     return updatedHtml;
   } catch (error) {
     console.error('Error in LLM pipeline, falling back to static content:', error);
@@ -44,10 +73,13 @@ async function generatePageHTML(originalDOM, intent, old_html) {
     // Try to load base template as fallback
     try {
       const baseTemplate = await window.LLMPatch.loadBaseTemplate();
+      contentCache.set(cacheKey, baseTemplate);
       return baseTemplate;
     } catch (templateError) {
       console.error('Failed to load base template:', templateError);
-      return generateFallbackHTML(originalDOM, intent, old_html);
+      const fallbackContent = generateFallbackHTML(originalDOM, intent, old_html);
+      contentCache.set(cacheKey, fallbackContent);
+      return fallbackContent;
     }
   }
 }
@@ -173,7 +205,8 @@ if (typeof module !== 'undefined' && module.exports) {
     generatePageHTML,
     wrapForSideBySide,
     extractTitleFromDOM,
-    getOriginalDOM
+    getOriginalDOM,
+    clearContentCache
   };
 } else {
   // Browser environment - attach to window
@@ -181,6 +214,7 @@ if (typeof module !== 'undefined' && module.exports) {
     generatePageHTML,
     wrapForSideBySide,
     extractTitleFromDOM,
-    getOriginalDOM
+    getOriginalDOM,
+    clearContentCache
   };
 }

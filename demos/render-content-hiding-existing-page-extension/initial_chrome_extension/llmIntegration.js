@@ -541,8 +541,7 @@ Return the filtered DOM tree as JSON with the same schema, but with only the imp
             }
           ],
           response_format: { type: "json_object" },
-          max_tokens: 8000,
-          temperature: 0.1
+          max_completion_tokens: 80000
         })
       });
 
@@ -630,8 +629,7 @@ FILTERED_DOM_TREE = ${JSON.stringify(filteredDomJson, null, 2)}
 Generate the body innerHTML only, using retro CSS classes and preserving all interactive element mappings.`
             }
           ],
-          max_tokens: 10000,
-          temperature: 0.2
+          max_completion_tokens: 100000
         })
       });
 
@@ -685,8 +683,7 @@ Generate the body innerHTML only, using retro CSS classes and preserving all int
               ]
             }
           ],
-          max_tokens: 10000,
-          temperature: 0.3
+          max_completion_tokens: 100000
         })
       });
 
