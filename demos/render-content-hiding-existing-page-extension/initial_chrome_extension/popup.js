@@ -32,6 +32,10 @@ class PopupController {
     document.getElementById('overlay-btn').addEventListener('click', () => {
       this.setMode('overlay');
     });
+
+    document.getElementById('regenerate-btn').addEventListener('click', () => {
+      this.regenerateContent();
+    });
   }
 
   async setMode(mode) {
@@ -101,6 +105,29 @@ class PopupController {
       currentIntent: this.currentIntent 
     });
     
+  }
+
+  async regenerateContent() {
+    this.setLoadingState(true);
+    
+    try {
+      // Update intent first if it has changed
+      this.updateIntent();
+      
+      // Send message to content script to regenerate content
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'regenerateContent'
+      });
+      
+      console.log('Content regeneration requested');
+      
+    } catch (error) {
+      console.error('Error regenerating content:', error);
+    } finally {
+      this.setLoadingState(false);
+    }
   }
 
 
