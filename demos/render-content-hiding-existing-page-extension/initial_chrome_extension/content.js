@@ -8,6 +8,9 @@ class DOMToggleExtension {
     this.sideBarContainer = null;
     this.generatedHtml = this.getInitialHtml(); // Store initial HTML for patching
     this.currentIntent = 'I want to look through my past orders on amazon'; // Store current user intent with default
+    this.urlSyncEnabled = false; // Track if URL sync is active
+    this.urlCheckInterval = null; // Store interval ID for URL checking
+    this.iframeUrlCheckInterval = null; // Store interval ID for iframe URL checking
     this.init();
   }
 
@@ -279,8 +282,8 @@ class DOMToggleExtension {
       element.classList.add('hidden-by-extension');
     });
     
-    // Set original HTML in iframe
-    this.originalIframe.srcdoc = this.originalPageHTML;
+    // Sync iframe URL with current page URL and set up URL synchronization
+    this.syncIframeUrl();
     this.originalIframe.classList.remove('hidden');
     
     // Show generated content on the right
@@ -325,6 +328,9 @@ class DOMToggleExtension {
     this.generatedContentDiv.classList.remove('side-by-side-mode', 'overlay-mode');
     this.sideBarContainer.classList.add('hidden');
     this.originalIframe.classList.add('hidden');
+    
+    // Disable URL synchronization when iframe is hidden
+    this.disableUrlSync();
     
     // Remove all body classes
     document.body.classList.remove('side-by-side-active', 'overlay-active');
@@ -391,6 +397,209 @@ class DOMToggleExtension {
       }
     }, 500); // Wait 500ms for the original action to complete
   }
+
+  /**
+   * Sync iframe URL with the main page URL
+   */
+  syncIframeUrl() {
+    if (!this.originalIframe) {
+      console.warn('Original iframe not available for URL sync');
+      return;
+    }
+
+    try {
+      // Set iframe src to current page URL
+      this.originalIframe.src = window.location.href;
+      console.log('🔗 Synced iframe URL to:', window.location.href);
+      
+      // Enable URL sync monitoring
+      this.enableUrlSync();
+      
+      // Set up iframe load event to handle navigation within iframe
+      this.originalIframe.onload = () => {
+        console.log('🔄 Iframe loaded, setting up cross-frame communication');
+        this.setupIframeNavigation();
+      };
+      
+    } catch (error) {
+      console.error('Error syncing iframe URL:', error);
+    }
+  }
+
+  /**
+   * Enable URL synchronization between main page and iframe
+   */
+  enableUrlSync() {
+    if (this.urlSyncEnabled) {
+      return; // Already enabled
+    }
+
+    this.urlSyncEnabled = true;
+    console.log('🔗 Enabling URL synchronization');
+
+    // Monitor URL changes in the main page
+    let lastUrl = window.location.href;
+    
+    // Use both popstate (for back/forward) and periodic checking (for programmatic changes)
+    window.addEventListener('popstate', () => {
+      if (window.location.href !== lastUrl) {
+        lastUrl = window.location.href;
+        this.handleMainPageUrlChange();
+      }
+    });
+
+    // Periodic check for URL changes (handles programmatic navigation)
+    this.urlCheckInterval = setInterval(() => {
+      if (window.location.href !== lastUrl) {
+        lastUrl = window.location.href;
+        this.handleMainPageUrlChange();
+      }
+    }, 1000);
+  }
+
+  /**
+   * Disable URL synchronization
+   */
+  disableUrlSync() {
+    if (!this.urlSyncEnabled) {
+      return;
+    }
+
+    this.urlSyncEnabled = false;
+    console.log('🔗 Disabling URL synchronization');
+
+    if (this.urlCheckInterval) {
+      clearInterval(this.urlCheckInterval);
+      this.urlCheckInterval = null;
+    }
+
+    if (this.iframeUrlCheckInterval) {
+      clearInterval(this.iframeUrlCheckInterval);
+      this.iframeUrlCheckInterval = null;
+    }
+  }
+
+  /**
+   * Handle URL changes in the main page
+   */
+  handleMainPageUrlChange() {
+    if (!this.originalIframe || this.originalIframe.classList.contains('hidden')) {
+      return; // Iframe not visible, no sync needed
+    }
+
+    try {
+      // Check if this URL change was initiated by iframe navigation
+      const currentState = window.history.state;
+      if (currentState && currentState.iframeNavigation) {
+        console.log('🔄 URL change was initiated by iframe navigation, skipping sync');
+        return;
+      }
+
+      console.log('🔄 Main page URL changed to:', window.location.href);
+      console.log('🔄 Updating iframe URL to match');
+      
+      // Update iframe to new URL
+      this.originalIframe.src = window.location.href;
+      
+      // Regenerate content for the new URL
+      console.log('🎯 Triggering content regeneration for new URL');
+      this.regenerateContentForUrlChange();
+      
+    } catch (error) {
+      console.error('Error handling main page URL change:', error);
+    }
+  }
+
+  /**
+   * Set up navigation handling within the iframe
+   */
+  setupIframeNavigation() {
+    let lastIframeUrl = null;
+
+    // Set up iframe load event listener to track URL changes
+    this.originalIframe.addEventListener('load', () => {
+      try {
+        // Get the current iframe URL
+        const currentIframeUrl = this.originalIframe.contentWindow.location.href;
+        
+        // Only update if URL actually changed and it's different from main page
+        if (currentIframeUrl !== lastIframeUrl && currentIframeUrl !== window.location.href) {
+          console.log('🔄 Iframe navigated to:', currentIframeUrl);
+          console.log('🔄 Updating main page URL to match iframe');
+          
+          // Update the main page URL to match iframe navigation
+          this.updateMainPageUrl(currentIframeUrl);
+          lastIframeUrl = currentIframeUrl;
+        }
+      } catch (error) {
+        // Handle cross-origin restrictions gracefully
+        console.log('Cannot access iframe URL due to cross-origin policy:', error.message);
+        
+        // For cross-origin iframes, we can still detect navigation via src changes
+        const currentSrc = this.originalIframe.src;
+        if (currentSrc !== lastIframeUrl && currentSrc !== window.location.href) {
+          console.log('🔄 Iframe src changed to:', currentSrc);
+          console.log('🔄 Updating main page URL to match iframe src');
+          
+          this.updateMainPageUrl(currentSrc);
+          lastIframeUrl = currentSrc;
+        }
+      }
+    });
+
+    // Additional monitoring for same-origin iframes
+    try {
+      if (this.originalIframe.contentWindow) {
+        // Monitor iframe URL changes more frequently for same-origin content
+        this.iframeUrlCheckInterval = setInterval(() => {
+          try {
+            const currentIframeUrl = this.originalIframe.contentWindow.location.href;
+            
+            if (currentIframeUrl !== lastIframeUrl && currentIframeUrl !== window.location.href) {
+              console.log('🔄 Iframe URL changed to:', currentIframeUrl);
+              console.log('🔄 Updating main page URL to match iframe');
+              
+              this.updateMainPageUrl(currentIframeUrl);
+              lastIframeUrl = currentIframeUrl;
+            }
+          } catch (e) {
+            // Cross-origin access blocked - this is expected for external sites
+            // We'll rely on the load event handler instead
+          }
+        }, 1000);
+      }
+    } catch (error) {
+      console.log('Cannot set up same-origin iframe monitoring:', error.message);
+    }
+  }
+
+  /**
+   * Update the main page URL to match iframe navigation
+   */
+  updateMainPageUrl(newUrl) {
+    try {
+      // Temporarily disable our URL sync to prevent infinite loops
+      const wasUrlSyncEnabled = this.urlSyncEnabled;
+      this.urlSyncEnabled = false;
+      
+      // Update the browser address bar
+      window.history.pushState({ iframeNavigation: true }, '', newUrl);
+      
+      console.log('✅ Updated main page URL to:', newUrl);
+      
+      // Regenerate content for the new URL
+      console.log('🎯 Triggering content regeneration for iframe navigation');
+      this.regenerateContentForUrlChange();
+      
+      // Re-enable URL sync after a short delay
+      setTimeout(() => {
+        this.urlSyncEnabled = wasUrlSyncEnabled;
+      }, 100);
+      
+    } catch (error) {
+      console.error('Error updating main page URL:', error);
+    }
+  }
   /**
    * Regenerate content with current intent
    */
@@ -416,6 +625,53 @@ class DOMToggleExtension {
       console.log('Content regenerated with intent:', this.currentIntent);
     } catch (error) {
       console.error('Error regenerating content:', error);
+    }
+  }
+
+  /**
+   * Regenerate content specifically for URL changes with proper timing
+   */
+  async regenerateContentForUrlChange() {
+    // Only regenerate if we're in a mode that shows generated content
+    if (this.currentMode === 'normal') {
+      console.log('Not regenerating content - extension in normal mode');
+      return;
+    }
+
+    if (!this.generatedContentDiv || this.generatedContentDiv.classList.contains('hidden')) {
+      console.log('Not regenerating content - generated content not visible');
+      return;
+    }
+
+    try {
+      console.log('🎯 Regenerating content for URL change...');
+      
+      // Wait a moment for the page/iframe to load
+      setTimeout(async () => {
+        try {
+          // Capture new page content
+          this.captureOriginalPageHTML();
+          
+          // Get the updated DOM object
+          const originalDOM = window.HTMLGenerator.getOriginalDOM();
+          
+          // Generate new HTML using current intent
+          this.generatedHtml = await window.HTMLGenerator.generatePageHTML(originalDOM, this.currentIntent, '');
+          
+          // Wrap it for side-by-side display
+          const wrappedHTML = window.HTMLGenerator.wrapForSideBySide(this.generatedHtml);
+          
+          // Update the content
+          this.generatedContentDiv.innerHTML = wrappedHTML;
+          
+          console.log('✅ Content regenerated for new URL with intent:', this.currentIntent);
+        } catch (error) {
+          console.error('Error in delayed content regeneration:', error);
+        }
+      }, 1000); // Wait 1 second for page to load
+      
+    } catch (error) {
+      console.error('Error setting up content regeneration for URL change:', error);
     }
   }
 }
