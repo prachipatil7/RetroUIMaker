@@ -990,18 +990,57 @@ Return a filtered array with only the essential elements users need for basic na
    * @returns {string} Formatted prompt
    */
   buildPatchPrompt(selectedDom, oldHtml, intent) {
-    const truncatedHtml = oldHtml.length > 2000 ? oldHtml.substring(0, 2000) + '...' : oldHtml;
+    const truncatedHtml = oldHtml.length > 80000 ? oldHtml.substring(0, 80000) + '...' : oldHtml;
     const selectedDomString = JSON.stringify(selectedDom, null, 1);
     
     // If still too large, truncate further
-    if (selectedDomString.length > 5000) {
+    if (selectedDomString.length > 80000) {
       const truncatedDom = this.truncateDomJson(selectedDom, 15);
       return this.buildPatchPrompt(truncatedDom, oldHtml, intent);
     }
     
-    return `Create HTML patch for intent: "${intent}"
+    return `You need to create an HTML patch that modifies the existing HTML. The final HTML (obtained after applying your patch) must contain all elements in the selected DOM, and no other elements may be created (do not create any other text, buttons, or hallucinate new elements). Ensure that the elements in the SELECTED_DOM are exact, with no modifications to their attributes or content. If the elements in the SELECTED_DOM have handlers, they must be present in the HTML. The only additional elements you can create are divs for some basic grouping or organizing of the SELECTED_DOM elements.
+
+Additionally, you may add the appropriate CSS classes to the SELECTED_DOM elements to make them have a consistent look. This is the only thing that can be modified for the SLECTED_DOM elements. These are the CSS classes that are available to you:
+- retro-body: Main body styling with Windows 95/98 look
+- retro-window: Window container with 3D border effect
+- retro-window-header: Blue gradient header for windows
+- retro-window-content: Content area of windows
+- retro-button: Classic button styling with 3D effect
+- retro-input: Input field with inset border
+- retro-textarea: Textarea with inset border
+- retro-label: Text labels
+- retro-checkbox, retro-radio: Form controls
+- retro-select: Dropdown select styling
+- retro-panel: Panel container with border
+- retro-groupbox: Group box with title
+- retro-groupbox-title: Title for group boxes
+- retro-listbox: List container
+- retro-list-item: Individual list items
+- retro-table: Table styling
+- retro-toolbar: Toolbar container
+- retro-toolbar-button: Toolbar buttons
+- retro-statusbar: Status bar at bottom
+- retro-menubar: Menu bar
+- retro-menu-item: Menu items
+- retro-progressbar: Progress bar container
+- retro-progressbar-fill: Progress bar fill
+- retro-title: Large title text
+- retro-subtitle: Subtitle text
+- retro-text: Regular text
+- retro-icon: Small icons (16x16)
+- retro-icon-large: Large icons (32x32)
+- retro-form-row: Form row layout
+- retro-form-label: Form labels
+- retro-form-input: Form input containers
+- retro-dialog: Dialog boxes
+- retro-dialog-buttons: Dialog button containers
+- retro-disabled: Disabled state
+- retro-selected: Selected state
+- retro-focused: Focused state
 
 SELECTED_DOM = ${selectedDomString}
+
 EXISTING_HTML = ${truncatedHtml}
 
 Return JSON patch with operations: replace, append, prepend, remove, setAttribute, removeAttribute, replaceFullDocument.`;
