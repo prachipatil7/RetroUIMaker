@@ -1,6 +1,7 @@
 class DOMToggleExtension {
   constructor() {
     this.currentMode = 'normal'; // 'normal', 'side-by-side', 'overlay'
+    this.defaultMode = 'normal'; // Default mode setting
     this.originalElements = [];
     this.originalPageHTML = '';
     this.originalIframe = null;
@@ -18,13 +19,16 @@ class DOMToggleExtension {
     }
   }
 
-  setupExtension() {
+  async setupExtension() {
     this.captureOriginalPageHTML();
     this.markOriginalContent();
     this.createSideBarContainer();
     this.createOriginalIframe();
     this.createGeneratedContentDiv();
     this.setupMessageListener();
+    
+    // Load and apply default mode
+    await this.loadDefaultMode();
   }
 
   captureOriginalPageHTML() {
@@ -99,8 +103,22 @@ class DOMToggleExtension {
         sendResponse({ success: true, mode: this.currentMode });
       } else if (request.action === 'getCurrentMode') {
         sendResponse({ mode: this.currentMode });
+      } else if (request.action === 'setDefaultMode') {
+        this.setDefaultMode(request.defaultMode);
+        sendResponse({ success: true, defaultMode: this.defaultMode });
       }
       return true; // Indicates we will send a response asynchronously
+    });
+
+    // Listen for messages from iframe content (generated HTML)
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'CLICK_ORIGINAL_BUTTON') {
+        this.clickOriginalButton(event.data.buttonSelector);
+      } else if (event.data && event.data.type === 'UPDATE_BUTTON_CONFIG') {
+        this.updateButtonConfig(event.data.buttonSelector, event.data.buttonText);
+      } else if (event.data && event.data.type === 'TEST_BUTTON_SELECTOR') {
+        this.testButtonSelector(event.data.buttonSelector);
+      }
     });
   }
 
@@ -133,8 +151,8 @@ class DOMToggleExtension {
       element.classList.add('hidden-by-extension');
     });
     
-    // Set original HTML in iframe
-    this.originalIframe.srcdoc = this.originalPageHTML;
+    // Use the current page URL instead of srcdoc to avoid CORS issues
+    this.originalIframe.src = window.location.href;
     this.originalIframe.classList.remove('hidden');
     
     // Show generated content on the right
@@ -178,6 +196,199 @@ class DOMToggleExtension {
     
     // Remove all body classes
     document.body.classList.remove('side-by-side-active', 'overlay-active');
+  }
+
+  async loadDefaultMode() {
+    try {
+      const result = await chrome.storage.local.get(['defaultMode']);
+      if (result.defaultMode) {
+        this.defaultMode = result.defaultMode;
+        
+        // Apply default mode if it's not normal
+        if (this.defaultMode !== 'normal') {
+          this.setMode(this.defaultMode);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading default mode:', error);
+      // Fallback to normal mode if there's an error
+      this.defaultMode = 'normal';
+    }
+  }
+
+  setDefaultMode(mode) {
+    this.defaultMode = mode;
+    // Note: We don't automatically apply the default mode here
+    // This is just for setting the preference
+  }
+
+  clickOriginalButton(buttonSelector) {
+    try {
+      // Find the original button on the current page
+      let originalButton = document.querySelector(buttonSelector);
+      
+      if (!originalButton) {
+        // If the exact selector doesn't work, try alternative selectors
+        const fallbackSelectors = [
+          'button[name="submit.addToCart"]',
+          'button[id="a-autoid-2-announce"]',
+          'button[aria-label="Add to cart"]',
+          'button.a-button-text',
+          '[data-action="add-to-cart"]',
+          '.add-to-cart-button',
+          '#add-to-cart'
+        ];
+        
+        for (const selector of fallbackSelectors) {
+          const fallbackButton = document.querySelector(selector);
+          if (fallbackButton) {
+            originalButton = fallbackButton;
+            console.log('Found button using fallback selector:', selector);
+            break;
+          }
+        }
+      }
+      
+      if (originalButton) {
+        // Multiple click simulation approaches for better compatibility
+        this.simulateRealClick(originalButton);
+        console.log('Successfully clicked original button:', originalButton);
+      } else {
+        console.warn('Could not find original button with any selector');
+      }
+    } catch (error) {
+      console.error('Error clicking original button:', error);
+    }
+  }
+
+  simulateRealClick(element) {
+    // Ensure the element is visible and not disabled
+    if (element.disabled) {
+      console.warn('Button is disabled, cannot click');
+      return;
+    }
+
+    // Scroll element into view if needed
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Wait a moment for scroll to complete, then simulate click
+    setTimeout(() => {
+      try {
+        // Use only the standard click method to avoid double-clicking
+        // This is the most reliable and least likely to cause duplicates
+        element.click();
+        console.log('Clicked original button using standard click method');
+        
+        // After clicking, refresh the iframe to show updated state
+        this.refreshOriginalIframe();
+      } catch (error) {
+        console.error('Error in simulateRealClick:', error);
+
+      }
+    }, 100);
+  }
+
+  /**
+   * Refresh the iframe to show updated state after button click
+   * This reloads the iframe to reflect changes made to the main page
+   */
+  refreshOriginalIframe() {
+    console.log('Refreshing iframe to show updated state...');
+    
+    // Give the original action time to complete
+    setTimeout(() => {
+      try {
+        // If the iframe is currently visible, reload it to show updates
+        if (this.originalIframe && !this.originalIframe.classList.contains('hidden')) {
+          // Force reload by adding a timestamp parameter
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.set('_refresh', Date.now().toString());
+          this.originalIframe.src = currentUrl.toString();
+          
+          console.log('Successfully refreshed iframe to show updated state');
+        } else {
+          console.log('Iframe not visible, no refresh needed');
+        }
+      } catch (error) {
+        console.error('Error refreshing iframe:', error);
+      }
+    }, 500); // Wait 500ms for the original action to complete
+  }
+
+  /**
+   * Updates the button configuration in HTMLGenerator
+   * @param {string} buttonSelector - CSS selector for the button
+   * @param {string} buttonText - Display text for the button
+   */
+  updateButtonConfig(buttonSelector, buttonText) {
+    try {
+      // Update the configuration in HTMLGenerator
+      if (window.HTMLGenerator && window.HTMLGenerator.setButtonConfig) {
+        window.HTMLGenerator.setButtonConfig(buttonSelector, buttonText);
+        console.log('Button configuration updated:', { buttonSelector, buttonText });
+        
+        // Regenerate the content with new configuration
+        this.regenerateContent();
+      } else {
+        console.error('HTMLGenerator not available');
+      }
+    } catch (error) {
+      console.error('Error updating button config:', error);
+    }
+  }
+
+  /**
+   * Tests a button selector to see if it can find a button on the page
+   * @param {string} buttonSelector - CSS selector to test
+   */
+  testButtonSelector(buttonSelector) {
+    try {
+      const testButton = document.querySelector(buttonSelector);
+      
+      if (testButton) {
+        console.log('✓ Button selector found:', buttonSelector, testButton);
+        
+        // Highlight the button temporarily
+        const originalStyle = testButton.style.cssText;
+        testButton.style.cssText += 'border: 3px solid red !important; background-color: yellow !important;';
+        
+        setTimeout(() => {
+          testButton.style.cssText = originalStyle;
+        }, 2000);
+        
+        alert(`✓ Selector found! Button: ${testButton.textContent || testButton.innerHTML || 'No text'}`);
+      } else {
+        console.warn('✗ Button selector not found:', buttonSelector);
+        alert(`✗ Selector not found: ${buttonSelector}`);
+      }
+    } catch (error) {
+      console.error('Error testing button selector:', error);
+      alert(`Error testing selector: ${error.message}`);
+    }
+  }
+
+  /**
+   * Regenerates the content with updated configuration
+   */
+  regenerateContent() {
+    try {
+      // Remove existing generated content
+      if (this.generatedContentDiv) {
+        this.generatedContentDiv.remove();
+      }
+      
+      // Recreate with new configuration
+      this.createGeneratedContentDiv();
+      
+      // If we're not in normal mode, show the updated content
+      if (this.currentMode !== 'normal') {
+        this.setMode(this.currentMode);
+      }
+      
+      console.log('Content regenerated with new button configuration');
+    } catch (error) {
+      console.error('Error regenerating content:', error);
+    }
   }
 }
 

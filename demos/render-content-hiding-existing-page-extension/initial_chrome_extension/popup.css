@@ -121,3 +121,66 @@ body {
   pointer-events: none;
   color: #808080;
 }
+
+/* Settings Section */
+.settings-section {
+  border-top: 1px solid #808080;
+  padding-top: 8px;
+  margin-top: 4px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+  padding: 2px 0;
+}
+
+.settings-icon {
+  font-size: 12px;
+  display: inline-block;
+  width: 14px;
+  text-align: center;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: bold;
+  color: #000000;
+}
+
+.setting-item {
+  margin-bottom: 6px;
+}
+
+.setting-label {
+  display: block;
+  font-size: 10px;
+  color: #000000;
+  margin-bottom: 2px;
+  font-weight: normal;
+}
+
+.setting-select {
+  width: 100%;
+  background-color: white;
+  border: 2px inset #c0c0c0;
+  padding: 2px 4px;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 10px;
+  color: #000000;
+  height: 20px;
+  cursor: pointer;
+}
+
+.setting-select:focus {
+  outline: 1px dotted #000000;
+  outline-offset: -2px;
+}
+
+.setting-select option {
+  background-color: white;
+  color: #000000;
+  padding: 2px 4px;
+}

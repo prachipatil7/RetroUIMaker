@@ -5,6 +5,7 @@ A clean and well-organized Chrome extension that allows users to view the origin
 ## Features
 
 - **Multiple View Modes**: Side-by-side, overlay, and normal viewing modes
+- **Configurable Button Selector**: Easily configure which button to interact with on the original site
 - **Iframe-Based Original Content**: Original website displayed in iframe for precise sizing control
 - **Side-by-Side View**: Original content and generated content displayed simultaneously
 - **Smooth Transitions**: CSS transitions for a polished user experience
@@ -47,6 +48,25 @@ initial_chrome_extension/
 4. **Retro Overlay**: Shows only the generated retro content in full screen
 5. **Reset**: Returns to normal website view
 6. The view mode persists until page refresh or mode change
+
+### Configuring Button Interactions
+
+When in side-by-side or overlay mode, you can configure which button the extension should interact with on the original site:
+
+1. In the generated retro interface, find the **Button Configuration** section
+2. **Button Selector**: Enter a CSS selector for the button you want to target (e.g., `button[name="submit.addToCart"]`, `#add-to-cart`, `.buy-now-btn`)
+3. **Button Text**: Enter the display text for the button in the retro interface
+4. Click **Update Configuration** to save your settings
+5. Click **Test Selector** to verify the selector finds the correct button (it will highlight the button temporarily)
+6. Use the configured button in the retro interface to interact with the original site
+
+### Example Button Selectors
+
+- `button[name="submit.addToCart"]` - Amazon Add to Cart button
+- `#buy-now` - Button with ID "buy-now"
+- `.checkout-btn` - Button with class "checkout-btn"
+- `button[aria-label="Add to cart"]` - Button with specific aria-label
+- `input[type="submit"][value="Subscribe"]` - Submit input with specific value
 
 ## Technical Details
 

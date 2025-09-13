@@ -3,12 +3,14 @@
 class PopupController {
   constructor() {
     this.currentMode = 'normal';
+    this.defaultMode = 'normal';
     this.init();
   }
 
-  init() {
+  async init() {
     this.attachEventListeners();
-    this.loadCurrentState();
+    await this.loadSettings();
+    await this.loadCurrentState();
   }
 
   attachEventListeners() {
@@ -23,6 +25,11 @@ class PopupController {
 
     document.getElementById('overlay-btn').addEventListener('click', () => {
       this.setMode('overlay');
+    });
+
+    // Settings event listeners
+    document.getElementById('default-mode-select').addEventListener('change', (e) => {
+      this.setDefaultMode(e.target.value);
     });
   }
 
@@ -93,6 +100,43 @@ class PopupController {
     });
   }
 
+
+  async loadSettings() {
+    try {
+      const result = await chrome.storage.local.get(['defaultMode']);
+      if (result.defaultMode) {
+        this.defaultMode = result.defaultMode;
+      }
+      this.updateSettingsUI();
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
+  }
+
+  async setDefaultMode(mode) {
+    try {
+      this.defaultMode = mode;
+      await chrome.storage.local.set({ defaultMode: mode });
+      this.updateSettingsUI();
+      
+      // Send message to content script to update default mode
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'setDefaultMode',
+        defaultMode: mode
+      });
+      
+    } catch (error) {
+      console.error('Error setting default mode:', error);
+    }
+  }
+
+  updateSettingsUI() {
+    const selectElement = document.getElementById('default-mode-select');
+    if (selectElement) {
+      selectElement.value = this.defaultMode;
+    }
+  }
 
   async loadCurrentState() {
     try {

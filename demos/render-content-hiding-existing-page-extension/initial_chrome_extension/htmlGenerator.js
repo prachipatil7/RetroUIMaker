@@ -6,6 +6,12 @@
  * to be easily replaced with LLM-generated content in the future.
  */
 
+// Configuration for button selector
+let BUTTON_SELECTOR_CONFIG = {
+  buttonSelector: 'button[name="submit.addToCart"][aria-label="Add to cart"]',
+  buttonText: 'Add to Cart'
+};
+
 /**
  * Generates HTML content based on the original DOM
  * This function will be replaced with LLM-generated content
@@ -80,9 +86,28 @@ function generatePageHTML(originalDOM) {
             </p>
             
             <div class="retro-form-row">
-              <button class="retro-button">Regenerate</button>
-              <button class="retro-button">Export</button>
+              <button class="retro-button" onclick="clickOriginalButton()">${BUTTON_SELECTOR_CONFIG.buttonText}</button>
               <button class="retro-button retro-disabled" disabled>Advanced</button>
+            </div>
+          </div>
+          
+          <div class="retro-groupbox">
+            <div class="retro-groupbox-title">Button Configuration</div>
+            <div class="retro-form-row">
+              <label class="retro-form-label retro-label">Button Selector:</label>
+              <input type="text" class="retro-input retro-form-input" id="buttonSelector" 
+                     value="${BUTTON_SELECTOR_CONFIG.buttonSelector}" 
+                     placeholder="Enter CSS selector for button">
+            </div>
+            <div class="retro-form-row">
+              <label class="retro-form-label retro-label">Button Text:</label>
+              <input type="text" class="retro-input retro-form-input" id="buttonText" 
+                     value="${BUTTON_SELECTOR_CONFIG.buttonText}" 
+                     placeholder="Display text for button">
+            </div>
+            <div class="retro-form-row">
+              <button class="retro-button" onclick="updateButtonConfig()">Update Configuration</button>
+              <button class="retro-button" onclick="testButtonSelector()">Test Selector</button>
             </div>
           </div>
           
@@ -118,6 +143,44 @@ function generatePageHTML(originalDOM) {
       <div class="retro-statusbar">
         Ready | ${new Date().toLocaleString()} | Generated from: ${originalDomain}
       </div>
+      
+      <script>
+        function clickOriginalButton() {
+          // Send message to parent window (content script) to click the original button
+          window.parent.postMessage({
+            type: 'CLICK_ORIGINAL_BUTTON',
+            buttonSelector: '${BUTTON_SELECTOR_CONFIG.buttonSelector}'
+          }, '*');
+        }
+        
+        function updateButtonConfig() {
+          const selectorInput = document.getElementById('buttonSelector');
+          const textInput = document.getElementById('buttonText');
+          
+          if (selectorInput && textInput) {
+            // Send message to parent window to update the configuration
+            window.parent.postMessage({
+              type: 'UPDATE_BUTTON_CONFIG',
+              buttonSelector: selectorInput.value,
+              buttonText: textInput.value
+            }, '*');
+            
+            alert('Button configuration updated!');
+          }
+        }
+        
+        function testButtonSelector() {
+          const selectorInput = document.getElementById('buttonSelector');
+          
+          if (selectorInput) {
+            // Send message to parent window to test the selector
+            window.parent.postMessage({
+              type: 'TEST_BUTTON_SELECTOR',
+              buttonSelector: selectorInput.value
+            }, '*');
+          }
+        }
+      </script>
     </body>
     </html>
   `;
@@ -198,6 +261,26 @@ function getOriginalDOM() {
   }
 }
 
+/**
+ * Gets the current button selector configuration
+ * 
+ * @returns {Object} Current button configuration
+ */
+function getButtonConfig() {
+  return { ...BUTTON_SELECTOR_CONFIG };
+}
+
+/**
+ * Sets the button selector configuration
+ * 
+ * @param {string} buttonSelector - CSS selector for the button to click
+ * @param {string} buttonText - Display text for the button
+ */
+function setButtonConfig(buttonSelector, buttonText = 'Click Button') {
+  BUTTON_SELECTOR_CONFIG.buttonSelector = buttonSelector;
+  BUTTON_SELECTOR_CONFIG.buttonText = buttonText;
+}
+
 // Export functions for use in content script
 if (typeof module !== 'undefined' && module.exports) {
   // Node.js environment
@@ -205,7 +288,9 @@ if (typeof module !== 'undefined' && module.exports) {
     generatePageHTML,
     wrapForSideBySide,
     extractTitleFromDOM,
-    getOriginalDOM
+    getOriginalDOM,
+    getButtonConfig,
+    setButtonConfig
   };
 } else {
   // Browser environment - attach to window
@@ -213,6 +298,8 @@ if (typeof module !== 'undefined' && module.exports) {
     generatePageHTML,
     wrapForSideBySide,
     extractTitleFromDOM,
-    getOriginalDOM
+    getOriginalDOM,
+    getButtonConfig,
+    setButtonConfig
   };
 }
