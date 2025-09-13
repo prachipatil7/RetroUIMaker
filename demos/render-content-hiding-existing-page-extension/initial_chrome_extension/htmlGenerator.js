@@ -89,20 +89,38 @@ async function generatePageHTML(originalDOM, intent, old_html) {
           </div>
         </div>
         <script>
+          // Embed the selector registry data directly in the iframe
+          window.selectorRegistryData = ${JSON.stringify(Object.fromEntries(window.selectorRegistry || new Map()))};
+          
+          // Convert back to Map for consistency
+          window.selectorRegistry = new Map(Object.entries(window.selectorRegistryData));
+          
           // Add event listeners after DOM is loaded (CSP-compliant)
           document.addEventListener('DOMContentLoaded', function() {
+            console.log('Iframe loaded with registry data:', window.selectorRegistryData);
+            
             // Add click listeners to interactive elements
             const clickableElements = document.querySelectorAll('[data-selector]');
             clickableElements.forEach(element => {
               const tagName = element.tagName.toLowerCase();
               const inputType = element.type;
               
-              // Add click listeners for buttons, links, and submit/button inputs
+              // Add click listeners for buttons (including converted a/input elements) and any remaining clickable elements
               if (tagName === 'button' || tagName === 'a' || 
                   (tagName === 'input' && (inputType === 'button' || inputType === 'submit'))) {
                 element.addEventListener('click', function(e) {
                   e.preventDefault();
-                  const selector = this.getAttribute('data-selector');
+                  // Get full selector from embedded registry using element ID
+                  const elementId = this.getAttribute('data-elem-id');
+                  console.log('Iframe click - Element ID:', elementId);
+                  console.log('Iframe click - Registry exists:', !!window.selectorRegistry);
+                  
+                  const registrySelector = window.selectorRegistry && window.selectorRegistry.get(elementId);
+                  const selector = registrySelector || this.getAttribute('data-selector');
+                  
+                  console.log('Iframe click - Registry selector:', registrySelector);
+                  console.log('Iframe click - Final selector:', selector);
+                  
                   parent.postMessage({
                     type: 'CLICK_ELEMENT',
                     selector: selector
@@ -114,7 +132,10 @@ async function generatePageHTML(originalDOM, intent, old_html) {
               // Add change listeners for inputs and textareas
               if (tagName === 'input' || tagName === 'textarea') {
                 element.addEventListener('change', function() {
-                  const selector = this.getAttribute('data-selector');
+                  // Get full selector from embedded registry using element ID
+                  const elementId = this.getAttribute('data-elem-id');
+                  const registrySelector = window.selectorRegistry && window.selectorRegistry.get(elementId);
+                  const selector = registrySelector || this.getAttribute('data-selector');
                   parent.postMessage({
                     type: 'CHANGE_ELEMENT',
                     selector: selector,
@@ -206,6 +227,13 @@ function wrapForSideBySide(generatedHTML) {
     `<link rel="stylesheet" href="${chrome.runtime.getURL('retro-theme.css')}"></head>`
   );
   
+  // Simple approach: use srcdoc but escape properly to avoid double-escaping
+  // First, temporarily replace already-escaped quotes to avoid double-escaping
+  const tempPlaceholder = '___TEMP_QUOTE___';
+  const preprocessed = htmlWithCSS.replace(/&quot;/g, tempPlaceholder);
+  const escaped = preprocessed.replace(/"/g, '&quot;');
+  const final = escaped.replace(new RegExp(tempPlaceholder, 'g'), '&quot;');
+  
   return `
     <div class="generated-content-wrapper" style="
       width: 100%;
@@ -220,7 +248,7 @@ function wrapForSideBySide(generatedHTML) {
           border: none;
           background: #c0c0c0;
         "
-        srcdoc="${htmlWithCSS.replace(/"/g, '&quot;')}"
+        srcdoc="${final}"
       ></iframe>
     </div>
   `;

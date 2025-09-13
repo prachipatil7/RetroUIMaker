@@ -406,7 +406,8 @@ ELEMENTS TO REMOVE:
 - Loading spinners and decorative elements
 - Analytics and tracking scripts
 
-Remember: Extract only what users actually NEED for basic navigation and core website functionality, regardless of specific intent if it's unrelated to the site.`;
+Remember: Extract only what users actually NEED for basic navigation and core website functionality, regardless of specific intent if it's unrelated to the site.
+Sometimes, NONE of the buttons are relevant to the intent, so return an empty array.`;
   }
 
   /**
@@ -487,36 +488,29 @@ Remember: Create functional HTML that lets users accomplish their goals, not dec
       const llmIntegration = new window.LLMIntegration();
       const fullDomJson = llmIntegration.buildDomJson(originalDOM);
       
+      console.log('🏗️ LLMIntegration built DOM JSON:', {
+        tag: fullDomJson.tag,
+        children: fullDomJson.children?.length || 0,
+        hasBody: fullDomJson.tag === 'body' || (fullDomJson.children && fullDomJson.children.some(child => child.tag === 'body')),
+        structure: JSON.stringify(fullDomJson, null, 2).substring(0, 300) + '...'
+      });
+      
       // Pre-trim to reduce token usage - keep interactive and structural elements
       const preTrimmedElements = this.preTrimDom(fullDomJson);
       
-      // Check if still too large for API
-      const domString = JSON.stringify(preTrimmedElements, null, 2);
-      // const estimatedTokens = Math.ceil(domString.length / 4);
+      // Check if elements are large enough to benefit from chunking
+      const elementsSize = JSON.stringify(preTrimmedElements).length;
+      const chunkThreshold = 60000; // ~60KB threshold - only chunk when really necessary to maintain filtering quality
       
-      // if (estimatedTokens > 20000) {
-      //   console.warn(`DOM still too large (${estimatedTokens} tokens), using local filtering only`);
-      //   // Since preTrimDom now returns filtered elements directly, we can use them as-is
-      //   console.log('Filtered elements type:', typeof preTrimmedElements, 'isArray:', Array.isArray(preTrimmedElements));
-      //   console.log('Filtered elements:', preTrimmedElements);
-      //   const result = {
-      //     filteredDomJson: preTrimmedElements,
-      //     selectedSelectors: this.extractSelectorsFromArray(preTrimmedElements)
-      //   };
-      //   this.selectionCache.set(cacheKey, result);
-      //   console.log('💾 Cached selection for:', cacheKey);
-      //   return result;
-      // }
+      let filteredElements;
       
-      const prompt = this.buildSelectionPrompt(preTrimmedElements, intent, url);
-      
-      const response = await this.makeApiRequest(apiKey, prompt, 'selection');
-      const data = await response.json();
-      const result = JSON.parse(data.choices[0].message.content);
-      console.log('Filtered elements:', result);
-      
-      // Handle both array format and object with filtered_dom_tree property
-      const filteredElements = Array.isArray(result) ? result : (result.filtered_dom_tree || result);
+      if (elementsSize > chunkThreshold) {
+        console.log(`Large pre-trimmed elements detected (${elementsSize} chars), using chunked LLM processing`);
+        filteredElements = await this.selectRelevantElementsChunked(preTrimmedElements, intent, url, apiKey);
+      } else {
+        console.log(`Small pre-trimmed elements (${elementsSize} chars), using single LLM request`);
+        filteredElements = await this.selectRelevantElementsSingle(preTrimmedElements, intent, url, apiKey);
+      }
       
       const selectionResult = {
         filteredDomJson: filteredElements,
@@ -541,6 +535,313 @@ Remember: Create functional HTML that lets users accomplish their goals, not dec
       console.log('💾 Cached fallback selection for:', cacheKey);
       return fallbackResult;
     }
+  }
+
+  /**
+   * Select relevant elements using single LLM request (for smaller element sets)
+   * @param {Array} preTrimmedElements - Pre-filtered elements array
+   * @param {string} intent - User intent
+   * @param {string} url - Current URL
+   * @param {string} apiKey - API key
+   * @returns {Promise<Array>} Filtered elements
+   */
+  async selectRelevantElementsSingle(preTrimmedElements, intent, url, apiKey) {
+    const prompt = this.buildSelectionPrompt(preTrimmedElements, intent, url);
+    
+    const response = await this.makeApiRequest(apiKey, prompt, 'selection');
+    const data = await response.json();
+    const result = JSON.parse(data.choices[0].message.content);
+    console.log('Single request filtered result:', result);
+    
+    // Handle multiple response formats: direct array, {elements: []}, {filtered_dom_tree: []}
+    if (Array.isArray(result)) {
+      return result;
+    } else if (result.elements && Array.isArray(result.elements)) {
+      console.log('Using result.elements array');
+      return result.elements;
+    } else if (result.filtered_dom_tree && Array.isArray(result.filtered_dom_tree)) {
+      console.log('Using result.filtered_dom_tree array');
+      return result.filtered_dom_tree;
+    } else {
+      console.warn('Unknown single request response format:', result);
+      return [];
+    }
+  }
+
+  /**
+   * Select relevant elements using chunked parallel processing
+   * @param {Array} preTrimmedElements - Pre-filtered elements array
+   * @param {string} intent - User intent
+   * @param {string} url - Current URL
+   * @param {string} apiKey - API key
+   * @returns {Promise<Array>} Filtered elements
+   */
+  async selectRelevantElementsChunked(preTrimmedElements, intent, url, apiKey) {
+    // Split elements into logical chunks
+    const chunks = this.chunkElementsArray(preTrimmedElements);
+    console.log(`Processing ${chunks.length} element chunks in parallel`);
+    
+    // Process chunks in parallel
+    const chunkPromises = chunks.map((chunk, index) => 
+      this.selectElementsChunk(chunk, intent, url, apiKey, index, chunks.length)
+    );
+    
+    const filteredChunks = await Promise.all(chunkPromises);
+    
+    // Merge filtered chunks back together
+    return this.mergeFilteredElementChunks(filteredChunks);
+  }
+
+  /**
+   * Split elements array into balanced chunks for parallel processing
+   * @param {Array} elements - Array of pre-trimmed elements
+   * @returns {Array} Array of element chunks
+   */
+  chunkElementsArray(elements) {
+    const maxChunkSize = 25000; // ~25KB per chunk - larger chunks for better filtering context
+    const chunks = [];
+    let currentChunk = [];
+    let currentSize = 0;
+    
+    for (const element of elements) {
+      const elementSize = JSON.stringify(element).length;
+      
+      if (currentSize + elementSize > maxChunkSize && currentChunk.length > 0) {
+        chunks.push(currentChunk);
+        currentChunk = [element];
+        currentSize = elementSize;
+      } else {
+        currentChunk.push(element);
+        currentSize += elementSize;
+      }
+    }
+    
+    if (currentChunk.length > 0) {
+      chunks.push(currentChunk);
+    }
+    
+    // Only create 2-3 chunks maximum to maintain filtering quality
+    if (chunks.length === 1 && elements.length > 50) {
+      // Split into just 2 or 3 larger chunks instead of many small ones
+      const targetChunks = elements.length > 150 ? 3 : 2; // Only 2-3 chunks max
+      const chunkSize = Math.ceil(elements.length / targetChunks);
+      const newChunks = [];
+      
+      for (let i = 0; i < elements.length; i += chunkSize) {
+        newChunks.push(elements.slice(i, i + chunkSize));
+      }
+      
+      console.log(`📦 Split ${elements.length} elements into ${newChunks.length} larger chunks for better filtering context`);
+      return newChunks;
+    } else if (chunks.length > 3) {
+      // If we ended up with too many small chunks, merge them into larger ones
+      console.log(`🔄 Merging ${chunks.length} small chunks into 3 larger chunks for better filtering`);
+      const newChunks = [];
+      const elementsPerChunk = Math.ceil(elements.length / 3);
+      
+      for (let i = 0; i < elements.length; i += elementsPerChunk) {
+        newChunks.push(elements.slice(i, i + elementsPerChunk));
+      }
+      
+      return newChunks;
+    }
+    
+    return chunks;
+  }
+
+  /**
+   * Select elements from a single chunk
+   * @param {Array} chunk - Element chunk to process
+   * @param {string} intent - User intent
+   * @param {string} url - Current URL
+   * @param {string} apiKey - API key
+   * @param {number} index - Chunk index
+   * @param {number} total - Total number of chunks
+   * @returns {Promise<Object>} Filtered chunk result
+   */
+  async selectElementsChunk(chunk, intent, url, apiKey, index, total) {
+    console.log(`🔄 Processing element chunk ${index + 1}/${total} (${chunk.length} elements)`);
+    
+    try {
+      const prompt = this.buildSelectionPrompt(chunk, intent, url, `chunk ${index + 1}/${total}`);
+      console.log(`📝 Chunk ${index + 1} prompt length: ${prompt.length} chars`);
+      
+      const response = await this.makeApiRequest(apiKey, prompt, 'selection');
+      console.log(`📡 Chunk ${index + 1} response status: ${response.status}`);
+      
+      const data = await response.json();
+      console.log(`📦 Chunk ${index + 1} raw response:`, data);
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error(`❌ Chunk ${index + 1} invalid response structure:`, data);
+        return {
+          elements: chunk, // Fallback to original chunk
+          success: false,
+          index,
+          error: 'Invalid response structure'
+        };
+      }
+      
+      const messageContent = data.choices[0].message.content;
+      console.log(`💬 Chunk ${index + 1} message content:`, messageContent?.substring(0, 200) + '...');
+      
+      let result;
+      try {
+        result = JSON.parse(messageContent);
+      } catch (parseError) {
+        console.error(`❌ Chunk ${index + 1} JSON parse error:`, parseError);
+        console.log(`Raw content that failed to parse:`, messageContent);
+        return {
+          elements: chunk, // Fallback to original chunk
+          success: false,
+          index,
+          error: 'JSON parse failed'
+        };
+      }
+      
+      console.log(`🔍 Chunk ${index + 1} parsed result:`, result);
+      
+      // Handle multiple response formats: direct array, {elements: []}, {filtered_dom_tree: []}
+      let filteredElements;
+      if (Array.isArray(result)) {
+        filteredElements = result;
+      } else if (result.elements && Array.isArray(result.elements)) {
+        filteredElements = result.elements;
+      } else if (result.filtered_dom_tree && Array.isArray(result.filtered_dom_tree)) {
+        filteredElements = result.filtered_dom_tree;
+      } else {
+        console.warn(`❌ Chunk ${index + 1} unknown response format:`, result);
+        filteredElements = [];
+      }
+      
+      console.log(`✅ Chunk ${index + 1} filtered elements:`, {
+        type: typeof filteredElements,
+        isArray: Array.isArray(filteredElements),
+        length: Array.isArray(filteredElements) ? filteredElements.length : 'N/A',
+        sample: Array.isArray(filteredElements) ? filteredElements.slice(0, 2) : filteredElements
+      });
+      
+      return {
+        elements: Array.isArray(filteredElements) ? filteredElements : [],
+        success: true,
+        index
+      };
+    } catch (error) {
+      console.error(`❌ Error filtering element chunk ${index + 1}:`, error);
+      // Return unfiltered chunk on error as fallback
+      return {
+        elements: chunk,
+        success: false,
+        index,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Merge filtered element chunks back together
+   * @param {Array} filteredChunks - Array of filtered chunk results
+   * @returns {Array} Merged array of filtered elements
+   */
+  mergeFilteredElementChunks(filteredChunks) {
+    console.log(`🔗 Starting merge of ${filteredChunks.length} chunks`);
+    
+    const allFilteredElements = [];
+    
+    filteredChunks.forEach((result, index) => {
+      console.log(`🔍 Chunk ${index + 1} analysis:`, {
+        success: result.success,
+        hasElements: !!result.elements,
+        isArray: Array.isArray(result.elements),
+        length: Array.isArray(result.elements) ? result.elements.length : 'N/A',
+        error: result.error || 'none'
+      });
+      
+      if (result.success && Array.isArray(result.elements)) {
+        console.log(`✅ Merging successful chunk ${index + 1} with ${result.elements.length} elements`);
+        if (result.elements.length > 0) {
+          console.log(`📝 Sample elements from chunk ${index + 1}:`, result.elements.slice(0, 2));
+        }
+        allFilteredElements.push(...result.elements);
+      } else if (!result.success && Array.isArray(result.elements)) {
+        console.log(`⚠️ Processing failed chunk ${index + 1} with local filtering (${result.elements.length} original elements)`);
+        // For failed chunks, apply additional local filtering as fallback
+        const locallyFiltered = result.elements.filter(element => 
+          element.isInteractive || element.isNavigationCandidate || this.isHighPriorityElement(element)
+        );
+        console.log(`🔧 Local filtering kept ${locallyFiltered.length} elements from chunk ${index + 1}`);
+        allFilteredElements.push(...locallyFiltered);
+      } else {
+        console.warn(`❌ Chunk ${index + 1} has invalid structure:`, {
+          success: result.success,
+          elements: result.elements,
+          error: result.error
+        });
+      }
+    });
+    
+    console.log(`📊 Total elements before dedup: ${allFilteredElements.length}`);
+    
+    // Remove duplicates based on selector
+    const uniqueElements = this.removeDuplicateElements(allFilteredElements);
+    
+    console.log(`🎯 Final result: Merged ${filteredChunks.length} element chunks into ${uniqueElements.length} filtered elements`);
+    
+    if (uniqueElements.length > 0) {
+      console.log(`📝 Sample final elements:`, uniqueElements.slice(0, 3));
+    } else {
+      console.warn(`❌ NO ELEMENTS SURVIVED THE MERGE PROCESS!`);
+      console.log(`🔍 Debug info - all chunks:`, filteredChunks.map((chunk, i) => ({
+        index: i + 1,
+        success: chunk.success,
+        elementCount: Array.isArray(chunk.elements) ? chunk.elements.length : 'not array',
+        error: chunk.error || 'none'
+      })));
+    }
+    
+    return uniqueElements;
+  }
+
+  /**
+   * Check if an element is high priority (for fallback filtering)
+   * @param {Object} element - Element to check
+   * @returns {boolean} True if high priority
+   */
+  isHighPriorityElement(element) {
+    // High priority tags
+    const highPriorityTags = ['input', 'button', 'a', 'select', 'textarea'];
+    if (highPriorityTags.includes(element.tag)) {
+      return true;
+    }
+    
+    // High priority text patterns
+    if (element.text) {
+      const text = element.text.toLowerCase();
+      const highPriorityKeywords = ['search', 'login', 'menu', 'buy', 'cart', 'submit'];
+      if (highPriorityKeywords.some(keyword => text.includes(keyword))) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  /**
+   * Remove duplicate elements based on selectors
+   * @param {Array} elements - Array of elements
+   * @returns {Array} Array without duplicates
+   */
+  removeDuplicateElements(elements) {
+    const seen = new Set();
+    return elements.filter(element => {
+      if (element.selector && seen.has(element.selector)) {
+        return false;
+      }
+      if (element.selector) {
+        seen.add(element.selector);
+      }
+      return true;
+    });
   }
 
   /**
@@ -674,17 +975,34 @@ ${bodyInnerHTML}
   preTrimDom(domJson) {
     const functionalElements = [];
     
+    console.log('🔍 preTrimDom: Starting with domJson:', {
+      tag: domJson.tag,
+      children: domJson.children?.length || 0,
+      type: typeof domJson
+    });
+    
     // Find the body element
     const bodyElement = this.findBodyElement(domJson);
     if (!bodyElement) {
-      console.warn('No body element found');
+      console.warn('❌ No body element found in DOM structure');
+      console.log('DOM structure:', JSON.stringify(domJson, null, 2).substring(0, 500) + '...');
       return [];
     }
+    
+    console.log('✅ Found body element with', bodyElement.children?.length || 0, 'children');
     
     // Extract functional elements from body
     this.extractFunctionalElements(bodyElement, functionalElements);
     
-    console.log(`Extracted ${functionalElements.length} functional elements`);
+    console.log(`📊 Extracted ${functionalElements.length} functional elements`);
+    if (functionalElements.length > 0) {
+      console.log('📝 Sample functional elements:', functionalElements.slice(0, 3).map(el => ({
+        tag: el.tag,
+        text: el.text?.substring(0, 50),
+        selector: el.selector,
+        isInteractive: el.isInteractive
+      })));
+    }
     
     // Filter each element to only include the specified keys
     const keysToKeep = ['tag', 'id', 'label', 'text', 'selector', 'type', 'isInteractive', 'isNavigationCandidate'];
@@ -699,7 +1017,7 @@ ${bodyInnerHTML}
       return filteredElement;
     });
     
-    console.log('preTrimDom returning:', Array.isArray(filteredElements) ? `array with ${filteredElements.length} elements` : typeof filteredElements);
+    console.log('🎯 preTrimDom returning:', Array.isArray(filteredElements) ? `array with ${filteredElements.length} elements` : typeof filteredElements);
     return filteredElements;
   }
 
@@ -728,20 +1046,34 @@ ${bodyInnerHTML}
    * @param {Object} node - DOM node
    * @param {Array} functionalElements - Array to store functional elements
    */
-  extractFunctionalElements(node, functionalElements) {
-    if (!node || !node.children) return;
+  extractFunctionalElements(node, functionalElements, depth = 0) {
+    if (!node) {
+      console.log('  '.repeat(depth) + '⚠️ Node is null/undefined');
+      return;
+    }
+    
+    if (!node.children) {
+      console.log('  '.repeat(depth) + `📄 Leaf node: ${node.tag} - text: "${node.text?.substring(0, 30) || 'none'}"`);
+      return;
+    }
+    
+    console.log('  '.repeat(depth) + `🔍 Checking ${node.tag} with ${node.children.length} children`);
     
     for (const child of node.children) {
       // Check if this is a functional element
-      if (this.isFunctionalElement(child)) {
+      const isFunctional = this.isFunctionalElement(child);
+      console.log('  '.repeat(depth + 1) + `${isFunctional ? '✅' : '❌'} ${child.tag} - "${child.text?.substring(0, 30) || 'no text'}" - functional: ${isFunctional}`);
+      
+      if (isFunctional) {
         functionalElements.push({
           ...child,
           children: [] // Don't include children for functional elements
         });
+        console.log('  '.repeat(depth + 1) + `➕ Added to functional elements (total: ${functionalElements.length})`);
       }
       
       // Recursively check children
-      this.extractFunctionalElements(child, functionalElements);
+      this.extractFunctionalElements(child, functionalElements, depth + 1);
     }
   }
 
@@ -751,6 +1083,10 @@ ${bodyInnerHTML}
    * @returns {boolean} True if functional
    */
   isFunctionalElement(node) {
+    if (!node || !node.tag) {
+      return false;
+    }
+    
     // Exclude non-functional elements first
     const excludeTags = ['style', 'script', 'meta', 'link', 'title', 'head', 'html', 'body'];
     if (excludeTags.includes(node.tag)) {
@@ -759,41 +1095,49 @@ ${bodyInnerHTML}
     
     // Input elements (always functional)
     if (node.tag === 'input' || node.tag === 'textarea' || node.tag === 'select') {
+      console.log(`    🎯 Form element detected: ${node.tag}`);
       return true;
     }
     
     // Button elements (always functional)
     if (node.tag === 'button') {
+      console.log(`    🎯 Button detected: ${node.tag}`);
       return true;
     }
     
     // Links with href (functional)
     if (node.tag === 'a' && node.href && node.href !== '#') {
+      console.log(`    🎯 Link with href detected: ${node.tag} - ${node.href}`);
       return true;
     }
     
     // Form elements (functional)
     if (node.tag === 'form') {
+      console.log(`    🎯 Form detected: ${node.tag}`);
       return true;
     }
     
     // Elements with specific roles that are functional
     if (node.role && ['button', 'link', 'search', 'navigation', 'combobox', 'textbox'].includes(node.role)) {
+      console.log(`    🎯 Functional role detected: ${node.tag}[role="${node.role}"]`);
       return true;
     }
     
     // Important text elements (headings, labels, important text)
     if (this.isImportantText(node)) {
+      console.log(`    🎯 Important text detected: ${node.tag} - "${node.text?.substring(0, 30)}"`);
       return true;
     }
     
     // Navigation containers
     if (node.tag === 'nav' || node.role === 'navigation') {
+      console.log(`    🎯 Navigation container detected: ${node.tag}`);
       return true;
     }
     
     // Interactive spans/divs only if they have meaningful content
     if ((node.tag === 'span' || node.tag === 'div') && node.role === 'button' && node.text && node.text.trim().length > 0) {
+      console.log(`    🎯 Interactive div/span detected: ${node.tag}[role="button"]`);
       return true;
     }
     
@@ -909,18 +1253,42 @@ ${bodyInnerHTML}
    * @param {Array} elements - Array of filtered elements
    * @param {string} intent - User intent
    * @param {string} url - The URL of the current webpage
+   * @param {string} context - Additional context (e.g., chunk info)
    * @returns {string} Formatted prompt
    */
-  buildSelectionPrompt(elements, intent, url = '') {
+  buildSelectionPrompt(elements, intent, url = '', context = '') {
     // Estimate token count and truncate if needed
     const domString = JSON.stringify(elements, null, 2);
     const estimatedTokens = Math.ceil(domString.length / 4); // Rough estimation
     
-    if (estimatedTokens > 15000) { // If too large, truncate further
-      console.warn(`Elements too large (${estimatedTokens} tokens), truncating further`);
-      const truncatedElements = elements.slice(0, Math.floor(elements.length * 0.7)); // Take 70% of elements
-      return this.buildSelectionPrompt(truncatedElements, intent, url);
+    if (estimatedTokens > 20000) { // Higher threshold to maintain filtering quality
+      console.warn(`Elements too large (${estimatedTokens} tokens), truncating with priority sorting`);
+      
+      // Sort elements by priority before truncating
+      const prioritizedElements = elements.sort((a, b) => {
+        // Prioritize interactive elements first
+        if (a.isInteractive && !b.isInteractive) return -1;
+        if (!a.isInteractive && b.isInteractive) return 1;
+        
+        // Then navigation candidates
+        if (a.isNavigationCandidate && !b.isNavigationCandidate) return -1;
+        if (!a.isNavigationCandidate && b.isNavigationCandidate) return 1;
+        
+        // Then by importance of tag
+        const importantTags = ['input', 'button', 'a', 'form', 'select', 'textarea'];
+        const aImportant = importantTags.includes(a.tag);
+        const bImportant = importantTags.includes(b.tag);
+        if (aImportant && !bImportant) return -1;
+        if (!aImportant && bImportant) return 1;
+        
+        return 0;
+      });
+      
+      const truncatedElements = prioritizedElements.slice(0, Math.floor(elements.length * 0.6)); // Take 60% of most important elements
+      return this.buildSelectionPrompt(truncatedElements, intent, url, context);
     }
+    
+    const contextNote = context ? `\n\nCHUNKING CONTEXT: Processing ${context} - Be HIGHLY SELECTIVE and only choose the most essential elements from this subset. Since this is part of a larger page, prioritize truly critical functionality over nice-to-have elements. Maintain consistency with overall intent and be more strict than usual.` : '';
     
     return `Extract ONLY the essential functional elements for navigation and core website functionality.
 
@@ -943,7 +1311,7 @@ CORE FUNCTIONALITY TO EXTRACT:
 - Key content areas that represent the main purpose of the site
 - Navigation breadcrumbs and site structure elements
 
-REMOVE: ads, social widgets, decorative elements, footer text, cookie banners
+REMOVE: ads, social widgets, decorative elements, footer text, cookie banners${contextNote}
 
 ELEMENTS = ${domString}
 

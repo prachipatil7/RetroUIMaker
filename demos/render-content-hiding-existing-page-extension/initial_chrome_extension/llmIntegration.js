@@ -441,7 +441,7 @@ class LLMIntegration {
   }
 
   /**
-   * Stage 1: Filter important elements from DOM JSON
+   * Stage 1: Filter important elements from DOM JSON with chunking for better performance
    * @param {Object} domJson - Full DOM JSON structure
    * @returns {Promise<Object>} Filtered DOM JSON with only important elements
    */
@@ -457,7 +457,200 @@ class LLMIntegration {
       console.log('Using cached filtered DOM');
       return cached;
     }
+    console.log('No cached filtered DOM');
 
+    try {
+      // Check if DOM is large enough to benefit from chunking
+      const domSize = JSON.stringify(domJson).length;
+      const chunkThreshold = 50000; // ~50KB threshold for chunking
+      
+      let filteredJson;
+      
+      if (domSize > chunkThreshold) {
+        console.log(`Large DOM detected (${domSize} chars), using chunked processing`);
+        filteredJson = await this.filterImportantElementsChunked(domJson);
+      } else {
+        console.log(`Small DOM (${domSize} chars), using single request`);
+        filteredJson = await this.filterImportantElementsSingle(domJson);
+      }
+      
+      // Cache the result
+      this.saveFilteredJson(urlKey, filteredJson);
+      
+      return filteredJson;
+    } catch (error) {
+      console.error('Error filtering important elements:', error);
+      // Fallback to local filtering
+      return this.localFilterImportantElements(domJson);
+    }
+  }
+
+  /**
+   * Filter DOM using chunked parallel processing
+   * @param {Object} domJson - Full DOM JSON structure
+   * @returns {Promise<Object>} Filtered DOM JSON
+   */
+  async filterImportantElementsChunked(domJson) {
+    // Split DOM into logical chunks
+    const chunks = this.chunkDomTree(domJson);
+    console.log(`Processing ${chunks.length} chunks in parallel`);
+    
+    // Process chunks in parallel
+    const chunkPromises = chunks.map((chunk, index) => 
+      this.filterDomChunk(chunk, index, chunks.length)
+    );
+    
+    const filteredChunks = await Promise.all(chunkPromises);
+    
+    // Merge filtered chunks back together
+    return this.mergeFilteredChunks(filteredChunks, domJson);
+  }
+
+  /**
+   * Filter DOM using single request (for smaller DOMs)
+   * @param {Object} domJson - Full DOM JSON structure
+   * @returns {Promise<Object>} Filtered DOM JSON
+   */
+  async filterImportantElementsSingle(domJson) {
+      const response = await fetch(this.apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: this.filterModel,
+          messages: [
+            {
+              role: 'system',
+            content: this.getFilteringSystemPrompt()
+          },
+          {
+            role: 'user',
+            content: this.getFilteringUserPrompt(domJson)
+          }
+        ],
+        response_format: { type: "json_object" },
+        max_completion_tokens: 80000
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const filteredJson = JSON.parse(data.choices[0].message.content);
+    
+    return filteredJson.filtered_dom_tree || filteredJson;
+  }
+
+  /**
+   * Split DOM tree into logical chunks for parallel processing
+   * @param {Object} domJson - Full DOM JSON structure
+   * @returns {Array} Array of DOM chunks
+   */
+  chunkDomTree(domJson) {
+    const chunks = [];
+    
+    // Strategy: Split by major sections (header, main, footer, etc.)
+    if (domJson.children && domJson.children.length > 0) {
+      // Look for semantic sections
+      const semanticSections = this.findSemanticSections(domJson);
+      
+      if (semanticSections.length > 1) {
+        // Use semantic sections as chunks
+        chunks.push(...semanticSections);
+      } else {
+        // Fallback: Split children into groups
+        const childrenGroups = this.groupChildrenBySize(domJson.children);
+        chunks.push(...childrenGroups.map(group => ({
+          ...domJson,
+          children: group
+        })));
+      }
+    } else {
+      // Single chunk for simple DOMs
+      chunks.push(domJson);
+    }
+    
+    return chunks;
+  }
+
+  /**
+   * Find semantic sections in DOM tree
+   * @param {Object} domJson - DOM JSON structure
+   * @returns {Array} Array of semantic sections
+   */
+  findSemanticSections(domJson) {
+    const sections = [];
+    const semanticTags = ['header', 'nav', 'main', 'aside', 'footer', 'section', 'article'];
+    
+    const findSections = (node, parentContext = null) => {
+      if (semanticTags.includes(node.tag) || 
+          (node.role && ['banner', 'navigation', 'main', 'complementary', 'contentinfo'].includes(node.role)) ||
+          (node.id && ['header', 'nav', 'main', 'sidebar', 'footer'].some(keyword => 
+            node.id.toLowerCase().includes(keyword)))) {
+        
+        sections.push({
+          ...domJson,
+          children: [node],
+          _chunkType: `${node.tag}-${node.id || node.role || 'section'}`,
+          _parentContext: parentContext
+        });
+      } else if (node.children) {
+        node.children.forEach(child => findSections(child, node));
+      }
+    };
+    
+    if (domJson.children) {
+      domJson.children.forEach(child => findSections(child));
+    }
+    
+    return sections.length > 1 ? sections : [];
+  }
+
+  /**
+   * Group children by estimated size for balanced chunks
+   * @param {Array} children - Array of child nodes
+   * @returns {Array} Array of grouped children
+   */
+  groupChildrenBySize(children) {
+    const maxChunkSize = 30000; // ~30KB per chunk
+    const groups = [];
+    let currentGroup = [];
+    let currentSize = 0;
+    
+    for (const child of children) {
+      const childSize = JSON.stringify(child).length;
+      
+      if (currentSize + childSize > maxChunkSize && currentGroup.length > 0) {
+        groups.push(currentGroup);
+        currentGroup = [child];
+        currentSize = childSize;
+      } else {
+        currentGroup.push(child);
+        currentSize += childSize;
+      }
+    }
+    
+    if (currentGroup.length > 0) {
+      groups.push(currentGroup);
+    }
+    
+    return groups;
+  }
+
+  /**
+   * Filter a single DOM chunk
+   * @param {Object} chunk - DOM chunk to filter
+   * @param {number} index - Chunk index
+   * @param {number} total - Total number of chunks
+   * @returns {Promise<Object>} Filtered chunk
+   */
+  async filterDomChunk(chunk, index, total) {
+    console.log(`Processing chunk ${index + 1}/${total}`);
+    
     try {
       const response = await fetch(this.apiEndpoint, {
         method: 'POST',
@@ -470,7 +663,105 @@ class LLMIntegration {
           messages: [
             {
               role: 'system',
-              content: `You are an expert UI information architect. Your task is to filter a DOM Tree JSON to include only essential navigation and user input elements that are necessary for the primary user workflows on a webpage.
+              content: this.getFilteringSystemPrompt() + `
+
+CHUNKING CONTEXT:
+- This is chunk ${index + 1} of ${total} total chunks
+- Focus on filtering this section while preserving its relationship to the overall page structure
+- Maintain all selector paths and hierarchy as they exist in the original DOM`
+            },
+            {
+              role: 'user',
+              content: this.getFilteringUserPrompt(chunk, `chunk ${index + 1}/${total}`)
+            }
+          ],
+          response_format: { type: "json_object" },
+          max_completion_tokens: 40000
+        })
+      });
+
+      if (!response.ok) {
+        console.warn(`Chunk ${index + 1} failed, including unfiltered`);
+        return { chunk, filtered: false };
+      }
+
+      const data = await response.json();
+      const filteredChunk = JSON.parse(data.choices[0].message.content);
+      
+      return {
+        chunk: filteredChunk.filtered_dom_tree || filteredChunk,
+        filtered: true,
+        index
+      };
+    } catch (error) {
+      console.warn(`Error filtering chunk ${index + 1}:`, error);
+      return { chunk, filtered: false, index };
+    }
+  }
+
+  /**
+   * Merge filtered chunks back into complete DOM tree
+   * @param {Array} filteredChunks - Array of filtered chunk results
+   * @param {Object} originalDom - Original DOM structure for reference
+   * @returns {Object} Merged filtered DOM
+   */
+  mergeFilteredChunks(filteredChunks, originalDom) {
+    // Start with the original DOM structure
+    const mergedDom = {
+      ...originalDom,
+      children: []
+    };
+    
+    // Collect all filtered children
+    const allFilteredChildren = [];
+    
+    filteredChunks.forEach((result, index) => {
+      if (result.filtered && result.chunk.children) {
+        // Add filtered children
+        allFilteredChildren.push(...result.chunk.children);
+      } else if (!result.filtered && result.chunk.children) {
+        // For failed chunks, apply local filtering as fallback
+        const locallyFiltered = this.localFilterImportantElements(result.chunk);
+        if (locallyFiltered.children) {
+          allFilteredChildren.push(...locallyFiltered.children);
+        }
+      }
+    });
+    
+    // Remove duplicates based on selector (in case of overlap)
+    const uniqueChildren = this.removeDuplicateNodes(allFilteredChildren);
+    
+    mergedDom.children = uniqueChildren;
+    
+    console.log(`Merged ${filteredChunks.length} chunks into ${uniqueChildren.length} top-level elements`);
+    
+    return mergedDom;
+  }
+
+  /**
+   * Remove duplicate nodes based on selectors
+   * @param {Array} nodes - Array of DOM nodes
+   * @returns {Array} Array without duplicates
+   */
+  removeDuplicateNodes(nodes) {
+    const seen = new Set();
+    return nodes.filter(node => {
+      if (node.selector && seen.has(node.selector)) {
+        return false;
+      }
+      if (node.selector) {
+        seen.add(node.selector);
+      }
+      return true;
+    });
+  }
+
+  /**
+   * Get the system prompt for filtering
+   * @returns {string} System prompt
+   */
+  getFilteringSystemPrompt() {
+    return `You are an expert UI information architect. Your task is to filter a DOM Tree JSON to include only essential navigation and user input elements that are necessary for the primary user workflows on a webpage.
 
 CRITICAL RULES:
 1. Preserve the original hierarchy and structure of the DOM tree
@@ -506,11 +797,19 @@ ELEMENTS TO REMOVE:
 - Loading spinners and decorative elements
 - Redundant or duplicate navigation elements
 
-Remember: The goal is to create a clean, focused interface that preserves all essential user interactions while removing clutter.`
-            },
-            {
-              role: 'user',
-              content: `Please filter this DOM tree JSON to keep only the important navigation and user input elements:
+Remember: The goal is to create a clean, focused interface that preserves all essential user interactions while removing clutter.`;
+  }
+
+  /**
+   * Get the user prompt for filtering
+   * @param {Object} domJson - DOM JSON to filter
+   * @param {string} context - Additional context (e.g., chunk info)
+   * @returns {string} User prompt
+   */
+  getFilteringUserPrompt(domJson, context = '') {
+    const contextNote = context ? `\n\nCONTEXT: Processing ${context}` : '';
+    
+    return `Please filter this DOM tree JSON to keep only the important navigation and user input elements:
 
 DOM_TREE_SCHEMA:
 {
@@ -533,32 +832,9 @@ DOM_TREE_SCHEMA:
   "children": "Node[] (recursive)"
 }
 
-DOM_TREE = ${JSON.stringify(domJson, null, 2)}
+DOM_TREE = ${JSON.stringify(domJson, null, 2)}${contextNote}
 
-Return the filtered DOM tree as JSON with the same schema, but with only the important elements preserved.`
-            }
-          ],
-          response_format: { type: "json_object" },
-          max_completion_tokens: 80000
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const filteredJson = JSON.parse(data.choices[0].message.content);
-      
-      // Cache the result
-      this.saveFilteredJson(urlKey, filteredJson);
-      
-      return filteredJson.filtered_dom_tree || filteredJson;
-    } catch (error) {
-      console.error('Error filtering important elements:', error);
-      // Fallback to local filtering
-      return this.localFilterImportantElements(domJson);
-    }
+Return the filtered DOM tree as JSON with the same schema, but with only the important elements preserved.`;
   }
 
   /**
@@ -613,10 +889,16 @@ MAPPING RULES:
 - Group related elements using .retro-groupbox
 - Use .retro-panel for content sections
 - Convert navigation into .retro-menubar or .retro-listbox
-- Use .retro-button for all clickable elements
+- Convert ALL clickable elements (a, input[type="button"], input[type="submit"]) to <button> tags with .retro-button class
 - Use .retro-input, .retro-select, .retro-textarea for form controls
 - Add semantic headings (h1-h6) to improve structure
-- Preserve form functionality and input types`
+- Preserve form functionality and input types
+
+BUTTON CONVERSION:
+- Convert <a> tags to <button> elements, preserving the text content
+- Convert <input type="button"> and <input type="submit"> to <button> elements, using value as text
+- All converted buttons should have class="retro-button"
+- Keep the original selector in data-selector attribute for event handling`
             },
             {
               role: 'user',

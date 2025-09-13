@@ -6,49 +6,171 @@
 function createCopy(domElements) {
     const duplicatedElements = [];
     
-    // Convert NodeList to Array if needed
-    // Collect all array values from domElements into a single flat array
+    // Handle different input formats
     let elementsArray = [];
-    for (const key in domElements) {
-        if (Array.isArray(domElements[key])) {
-            elementsArray = elementsArray.concat(domElements[key]);
+    
+    if (Array.isArray(domElements)) {
+        // Direct array of elements
+        elementsArray = domElements;
+        console.log('createCopy: Received direct array with', elementsArray.length, 'elements');
+    } else if (domElements && typeof domElements === 'object') {
+        // Object with array properties (legacy format)
+        for (const key in domElements) {
+            if (Array.isArray(domElements[key])) {
+                elementsArray = elementsArray.concat(domElements[key]);
+            }
         }
+        console.log('createCopy: Extracted from object, found', elementsArray.length, 'elements');
+    } else {
+        console.warn('createCopy: Invalid input format:', typeof domElements, domElements);
+        return [];
     }
-    console.log('domElements', domElements);
-    console.log('elementsArray', elementsArray);
+    
+    console.log('domElements input:', domElements);
+    console.log('elementsArray processed:', elementsArray);
     
     elementsArray.forEach(originalElement => {
-        const tagName = originalElement.tag.toLowerCase();
+        const tagName = originalElement.tag?.toLowerCase();
         const inputType = originalElement.type;
         
-        // Determine if this should be rendered as a button
-        const shouldRenderAsButton = tagName === 'a' || 
-                                   tagName === 'button' || 
-                                   (tagName === 'input' && (inputType === 'button' || inputType === 'submit'));
+        if (!tagName) {
+            console.warn('createCopy: Element missing tag property:', originalElement);
+            return;
+        }
+        
+        // Convert input buttons, submit buttons, and links to button elements
+        // Also convert elements with role="button"
+        const shouldRenderAsButton = tagName === 'button' || 
+                                   tagName === 'a' || 
+                                   (tagName === 'input' && (inputType === 'button' || inputType === 'submit')) ||
+                                   (originalElement.role === 'button');
+        
+        console.log('Button conversion check:', {
+            tagName,
+            inputType,
+            originalElementType: originalElement.type,
+            originalElementRole: originalElement.role,
+            shouldRenderAsButton,
+            isInputButton: tagName === 'input' && (inputType === 'button' || inputType === 'submit'),
+            hasButtonRole: originalElement.role === 'button'
+        });
         
         // Create a new element - render clickable elements as buttons
         const newElement = shouldRenderAsButton ? 
                           document.createElement('button') : 
                           document.createElement(tagName);
         
-        // Copy text content
-        if (originalElement.textContent) {
-            newElement.textContent = originalElement.textContent;
+        // Get appropriate text content based on element type
+        let textContent = originalElement.text || originalElement.textContent;
+        
+        console.log('Processing element:', {
+            tag: tagName,
+            originalText: originalElement.text,
+            originalTextContent: originalElement.textContent,
+            originalValue: originalElement.value,
+            originalLabel: originalElement.label,
+            finalTextContent: textContent,
+            shouldRenderAsButton: shouldRenderAsButton
+        });
+        
+        // For input elements, use value as primary text source
+        if (tagName === 'input' && originalElement.value) {
+            textContent = originalElement.value;
+            console.log('Updated textContent for input:', textContent);
         }
         
-        // For input elements rendered as buttons, use value as text if no textContent
-        if (shouldRenderAsButton && tagName === 'input' && originalElement.value && !originalElement.textContent) {
-            newElement.textContent = originalElement.value;
+        // Special handling for inputs with role="button" that are being converted
+        if (shouldRenderAsButton && tagName === 'input' && originalElement.role === 'button') {
+            if (!textContent) {
+                textContent = originalElement.value || originalElement.title || originalElement.alt;
+                console.log('Using input button fallback text:', textContent);
+            }
         }
         
-        if (originalElement) {
-            Object.keys(originalElement).forEach(attrName => {
-                // Skip selector and input-specific attributes when rendering as button
-                if (attrName !== 'selector' && 
-                    !(shouldRenderAsButton && ['type', 'value'].includes(attrName))) {
-                    newElement[attrName] = originalElement[attrName];
-                }
-            });
+        // For links that are being converted to buttons, try multiple text sources
+        if (shouldRenderAsButton && tagName === 'a') {
+            // Try different properties to get text content
+            if (!textContent) {
+                textContent = originalElement.innerText || 
+                            originalElement.innerHTML || 
+                            originalElement.title || 
+                            originalElement.alt ||
+                            originalElement.name;
+                console.log('Using fallback text for link:', textContent);
+            }
+            
+            // Clean up HTML tags if innerHTML was used
+            if (textContent && textContent.includes('<')) {
+                textContent = textContent.replace(/<[^>]*>/g, '').trim();
+                console.log('Cleaned HTML from text:', textContent);
+            }
+            
+            if (originalElement.href) {
+                newElement.setAttribute('title', `Link: ${originalElement.href}`);
+                newElement.setAttribute('data-original-href', originalElement.href);
+            }
+        }
+        
+        // If we still don't have text content, try the label as fallback
+        if (!textContent && originalElement.label) {
+            textContent = originalElement.label;
+            console.log('Using label as text content:', textContent);
+        }
+        
+        // Clean and set the text content
+        if (textContent) {
+            // Trim whitespace and normalize
+            textContent = textContent.trim();
+            if (textContent) {
+                newElement.textContent = textContent;
+                console.log('Set button text to:', textContent);
+            } else {
+                // Text was all whitespace
+                newElement.textContent = shouldRenderAsButton ? '[Button]' : '[Element]';
+                console.log('Used fallback text for empty content');
+            }
+        } else {
+            // No text content found at all
+            if (shouldRenderAsButton) {
+                newElement.textContent = tagName === 'a' ? '[Link]' : '[Button]';
+                console.log('Used fallback text for missing content:', newElement.textContent);
+            }
+            console.warn('No text content found for element:', originalElement);
+        }
+        
+        // Copy relevant attributes from filtered element
+        if (originalElement.id) {
+            newElement.id = originalElement.id;
+        }
+        
+        if (originalElement.label) {
+            newElement.setAttribute('aria-label', originalElement.label);
+        }
+        
+        // For form elements that are NOT converted to buttons, preserve important attributes
+        if (tagName === 'input' && !shouldRenderAsButton) {
+            if (originalElement.type) {
+                newElement.type = originalElement.type;
+            }
+            if (originalElement.value) {
+                newElement.value = originalElement.value;
+            }
+            if (originalElement.placeholder) {
+                newElement.placeholder = originalElement.placeholder;
+            }
+            if (originalElement.name) {
+                newElement.name = originalElement.name;
+            }
+        }
+        
+        // Add button styling class for converted elements
+        if (shouldRenderAsButton) {
+            newElement.classList.add('retro-button');
+            // Store original element type for reference
+            newElement.setAttribute('data-original-type', tagName);
+            if (tagName === 'input') {
+                newElement.setAttribute('data-original-input-type', inputType);
+            }
         }
         
         // Add appropriate event handlers based on element type and existing handlers
@@ -72,32 +194,72 @@ function addEventHandlers(originalElement, newElement) {
     const newTagName = newElement.tagName.toLowerCase();
     const inputType = originalElement.type;
     
-    // Get selector from original element (assuming it has a selector property)
-    const selector = originalElement.selector || '';
+    // Get the full selector from original element
+    const fullSelector = originalElement.selector || '';
     
-    // Store selector as data attribute for use in HTML onclick handlers
-    newElement.setAttribute('data-selector', selector);
+    // Store the full selector as a property on the element (not as HTML attribute)
+    newElement._fullSelector = fullSelector;
     
-    // Add handlers based on what the new element is and what the original was
-    if (newTagName === 'button') {
-        // All elements rendered as buttons get click handlers
+    // Create a shortened selector for display purposes only
+    let displaySelector = fullSelector;
+    if (fullSelector.length > 100) {
+        const parts = fullSelector.split(' > ');
+        const lastPart = parts[parts.length - 1];
+        displaySelector = lastPart || fullSelector.substring(0, 100) + '...';
+        console.log('Using shortened display selector:', displaySelector);
+    }
+    
+    // Store the shortened selector in data-selector for display
+    newElement.setAttribute('data-selector', displaySelector);
+    
+    // Create a unique ID to map back to full selector after HTML conversion
+    const elementId = 'elem-' + Math.random().toString(36).substr(2, 9);
+    newElement.setAttribute('data-elem-id', elementId);
+    
+    // Store mapping in a global registry that survives HTML conversion
+    if (!window.selectorRegistry) {
+        window.selectorRegistry = new Map();
+    }
+    window.selectorRegistry.set(elementId, fullSelector);
+    console.log('Stored in registry:', elementId, '->', fullSelector);
+    
+    // Add handlers based on what the element type is
+    if (newTagName === 'button' || newTagName === 'a') {
+        // Buttons and links get click handlers
         newElement.onclick = function() {
-            // Send message to parent window to click element in original iframe
+            // Get full selector from registry using element ID
+            const elementId = this.getAttribute('data-elem-id');
+            console.log('Element ID:', elementId);
+            console.log('Registry exists:', !!window.selectorRegistry);
+            console.log('Registry contents:', window.selectorRegistry);
+            
+            const registrySelector = window.selectorRegistry && window.selectorRegistry.get(elementId);
+            const functionalSelector = registrySelector || this._fullSelector || this.getAttribute('data-selector');
+            
+            console.log('Registry selector:', registrySelector);
+            console.log('Final functional selector:', functionalSelector);
+            console.log('About to send CLICK_ELEMENT with selector:', JSON.stringify(functionalSelector));
+            console.log('Selector length:', functionalSelector?.length);
             parent.postMessage({
                 type: 'CLICK_ELEMENT',
-                selector: selector
+                selector: functionalSelector
             }, '*');
-            console.log('CLICK_ELEMENT', selector);
+            console.log('CLICK_ELEMENT sent');
         };
-    } else if (originalTagName === 'input' || originalTagName === 'textarea') {
-        // Form inputs that are NOT rendered as buttons get change handlers
+    } else if (newTagName === 'input' || newTagName === 'textarea') {
+        // Form inputs get change handlers
         newElement.onchange = function() {
-            // Send message to parent window to change element in original iframe
+            // Get full selector from registry using element ID
+            const elementId = this.getAttribute('data-elem-id');
+            const functionalSelector = (window.selectorRegistry && window.selectorRegistry.get(elementId)) || 
+                                     this._fullSelector || 
+                                     this.getAttribute('data-selector');
             parent.postMessage({
                 type: 'CHANGE_ELEMENT',
-                selector: selector
+                selector: functionalSelector,
+                value: this.value
             }, '*');
-            console.log('CHANGE_ELEMENT', selector);
+            console.log('CHANGE_ELEMENT', functionalSelector, this.value);
         };
     }
 }

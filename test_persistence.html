@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Page for Mode Persistence</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+        }
+        .instruction {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 3px solid #FFC107;
+        }
+        .navigation-links {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+        .nav-link {
+            padding: 12px 25px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            position: relative;
+            padding-left: 30px;
+        }
+        .feature-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 10px;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Mode Persistence Test</h1>
+        
+        <div class="test-section">
+            <h2>Testing Instructions</h2>
+            <div class="instruction">
+                <strong>Step 1:</strong> Open the Chrome extension popup and select either "Side-by-Side" or "Overlay" mode.
+            </div>
+            <div class="instruction">
+                <strong>Step 2:</strong> Refresh this page or navigate to another site using the links below.
+            </div>
+            <div class="instruction">
+                <strong>Step 3:</strong> Verify that the extension automatically applies the same mode you selected.
+            </div>
+            <div class="instruction">
+                <strong>Step 4:</strong> Open the popup again - it should show the correct active mode.
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Navigation Links</h2>
+            <p>Use these links to test mode persistence across different sites:</p>
+            <div class="navigation-links">
+                <a href="https://www.google.com" class="nav-link" target="_blank">Google</a>
+                <a href="https://www.wikipedia.org" class="nav-link" target="_blank">Wikipedia</a>
+                <a href="https://www.github.com" class="nav-link" target="_blank">GitHub</a>
+                <a href="https://www.stackoverflow.com" class="nav-link" target="_blank">Stack Overflow</a>
+                <a href="javascript:location.reload()" class="nav-link">Refresh Page</a>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Expected Behavior</h2>
+            <ul class="feature-list">
+                <li>Mode persists across page refreshes</li>
+                <li>Mode persists when navigating to different websites</li>
+                <li>User intent is preserved and restored</li>
+                <li>Extension popup shows the correct active mode</li>
+                <li>Generated content appears automatically in the selected mode</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>Sample Content for Testing</h2>
+            <p>This page contains various elements that the retro UI extension can transform:</p>
+            <form style="margin: 20px 0;">
+                <input type="text" placeholder="Sample input field" style="padding: 10px; margin: 5px; border-radius: 5px; border: none;">
+                <button type="button" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; margin: 5px;">Sample Button</button>
+            </form>
+            <div style="display: flex; gap: 10px; margin: 20px 0;">
+                <div style="flex: 1; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px;">Box 1</div>
+                <div style="flex: 1; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px;">Box 2</div>
+                <div style="flex: 1; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px;">Box 3</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -68,6 +68,9 @@ class DOMToggleExtension {
     this.createOriginalIframe();
     await this.createGeneratedContentDiv();
     this.setupMessageListener();
+    
+    // Load and apply persisted mode after everything is set up
+    await this.loadPersistedState();
   }
 
   captureOriginalPageHTML() {
@@ -129,22 +132,31 @@ class DOMToggleExtension {
   setupMessageListener() {
     // Listen for messages from popup
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-      if (request.action === 'setMode') {
-        if (request.intent !== undefined) {
-          this.currentIntent = request.intent;
+      // Handle async operations properly
+      const handleAsync = async () => {
+        try {
+          if (request.action === 'setMode') {
+            if (request.intent !== undefined) {
+              this.currentIntent = request.intent;
+            }
+            await this.setMode(request.mode);
+            sendResponse({ success: true, mode: this.currentMode });
+          } else if (request.action === 'getCurrentMode') {
+            sendResponse({ mode: this.currentMode, intent: this.currentIntent });
+          } else if (request.action === 'setIntent') {
+            await this.setIntent(request.intent);
+            sendResponse({ success: true, intent: this.currentIntent });
+          } else if (request.action === 'regenerateContent') {
+            await this.generateContent();
+            sendResponse({ success: true });
+          }
+        } catch (error) {
+          console.error('Error handling message:', error);
+          sendResponse({ success: false, error: error.message });
         }
-        this.setMode(request.mode);
-        sendResponse({ success: true, mode: this.currentMode });
-      } else if (request.action === 'getCurrentMode') {
-        sendResponse({ mode: this.currentMode });
-      } else if (request.action === 'setIntent') {
-        this.setIntent(request.intent);
-        sendResponse({ success: true, intent: this.currentIntent });
-      } else if (request.action === 'regenerateContent') {
-        this.generateContent();
-        sendResponse({ success: true });
-      }
+      };
 
+      handleAsync();
       return true; // Indicates we will send a response asynchronously
     });
 
@@ -163,6 +175,10 @@ class DOMToggleExtension {
 
   clickElement(selector) {
     try {
+      console.log('clickElement called with selector:', JSON.stringify(selector));
+      console.log('Selector length:', selector?.length);
+      console.log('Selector type:', typeof selector);
+      
       if (this.originalIframe && this.originalIframe.contentDocument) {
         // Try to find and click the element in the original iframe
         const element = this.originalIframe.contentDocument.querySelector(selector);
@@ -171,6 +187,9 @@ class DOMToggleExtension {
           element.click();
         } else {
           console.warn('Element not found in original iframe:', selector);
+          console.log('Trying to find similar elements...');
+          this.debugSelectorMatching(this.originalIframe.contentDocument, selector);
+          
           // Fallback: try to click in the main document
           const mainElement = document.querySelector(selector);
           if (mainElement) {
@@ -178,6 +197,11 @@ class DOMToggleExtension {
             mainElement.click();
           } else {
             console.warn('Element not found in main document either:', selector);
+            console.log('Trying to find similar elements in main document...');
+            this.debugSelectorMatching(document, selector);
+            
+            // Try fallback strategies for common patterns
+            this.tryFallbackStrategies(document, selector);
           }
         }
       } else {
@@ -193,6 +217,97 @@ class DOMToggleExtension {
       }
     } catch (error) {
       console.error('Error clicking element:', error);
+    }
+  }
+
+  debugSelectorMatching(doc, selector) {
+    try {
+      // Try to find partial matches by breaking down the selector
+      const parts = selector.split(' > ');
+      console.log('Selector has', parts.length, 'parts');
+      
+      let currentDoc = doc;
+      let currentSelector = '';
+      
+      for (let i = 0; i < parts.length; i++) {
+        currentSelector = parts.slice(0, i + 1).join(' > ');
+        const elements = currentDoc.querySelectorAll(currentSelector);
+        console.log(`Part ${i + 1}: "${parts[i]}" -> Found ${elements.length} elements with selector: "${currentSelector}"`);
+        
+        if (elements.length === 0) {
+          console.log(`Failed at part ${i + 1}: "${parts[i]}"`);
+          
+          // Try to find similar elements at this level
+          const tagMatch = parts[i].match(/^([a-zA-Z0-9-]+)/);
+          if (tagMatch) {
+            const tagName = tagMatch[1];
+            const similarElements = currentDoc.querySelectorAll(tagName);
+            console.log(`Found ${similarElements.length} similar "${tagName}" elements at this level`);
+            
+            if (similarElements.length > 0) {
+              console.log('Sample similar elements:', Array.from(similarElements).slice(0, 3).map(el => ({
+                tagName: el.tagName,
+                className: el.className,
+                id: el.id,
+                role: el.getAttribute('role')
+              })));
+            }
+          }
+          break;
+        }
+      }
+    } catch (error) {
+      console.error('Error in debugSelectorMatching:', error);
+    }
+  }
+
+  tryFallbackStrategies(doc, selector) {
+    try {
+      console.log('Trying fallback strategies...');
+      
+      // Strategy 1: Try just the last element with its attributes
+      const parts = selector.split(' > ');
+      const lastPart = parts[parts.length - 1];
+      console.log('Trying last part only:', lastPart);
+      
+      const lastPartElements = doc.querySelectorAll(lastPart);
+      if (lastPartElements.length > 0) {
+        console.log(`Found ${lastPartElements.length} elements with last part selector`);
+        console.log('Clicking first match with last part selector');
+        lastPartElements[0].click();
+        return true;
+      }
+      
+      // Strategy 2: For menu items, try to find by text content
+      if (selector.includes('role="menuitem"')) {
+        console.log('Detected menu item, trying text-based search...');
+        const menuItems = doc.querySelectorAll('[role="menuitem"], a[role="menuitem"]');
+        console.log(`Found ${menuItems.length} menu items to check`);
+        
+        // We'd need the text content to match, but we don't have it in the selector
+        // For now, just log what menu items are available
+        menuItems.forEach((item, index) => {
+          console.log(`Menu item ${index}: "${item.textContent?.trim()}" - ${item.tagName}`);
+        });
+      }
+      
+      // Strategy 3: Try simpler version without nth-child selectors
+      const simplifiedSelector = selector.replace(/:nth-child\(\d+\)/g, '');
+      if (simplifiedSelector !== selector) {
+        console.log('Trying simplified selector (no nth-child):', simplifiedSelector);
+        const simplifiedElements = doc.querySelectorAll(simplifiedSelector);
+        if (simplifiedElements.length > 0) {
+          console.log(`Found ${simplifiedElements.length} elements with simplified selector`);
+          console.log('Clicking first match with simplified selector');
+          simplifiedElements[0].click();
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error in tryFallbackStrategies:', error);
+      return false;
     }
   }
 
@@ -252,6 +367,9 @@ class DOMToggleExtension {
     
     // Set new mode
     this.currentMode = mode;
+    
+    // Save the mode to storage immediately
+    await this.saveState();
     
     switch (mode) {
       case 'side-by-side':
@@ -361,9 +479,12 @@ class DOMToggleExtension {
    * Set user intent for content generation
    * @param {string} intent - User intent
    */
-  setIntent(intent) {
+  async setIntent(intent) {
     this.currentIntent = intent || '';
     console.log('Intent set to:', this.currentIntent);
+    
+    // Save the intent to storage immediately
+    await this.saveState();
   }
 
   /**
@@ -416,6 +537,83 @@ class DOMToggleExtension {
       console.log('Content regenerated with intent:', this.currentIntent);
     } catch (error) {
       console.error('Error regenerating content:', error);
+    }
+  }
+
+  /**
+   * Load persisted state from chrome storage and apply it
+   */
+  async loadPersistedState() {
+    try {
+      console.log('🔄 Loading persisted state...');
+      
+      // Get saved state from chrome storage
+      const result = await chrome.storage.local.get(['currentMode', 'currentIntent']);
+      
+      if (result.currentIntent) {
+        this.currentIntent = result.currentIntent;
+        console.log('📝 Loaded persisted intent:', this.currentIntent);
+      }
+      
+      if (result.currentMode && result.currentMode !== 'normal') {
+        console.log('🎯 Applying persisted mode:', result.currentMode);
+        
+        // Apply the persisted mode (but don't save it again to avoid infinite loop)
+        const savedMode = result.currentMode;
+        this.currentMode = 'normal'; // Reset to normal first so setMode doesn't skip
+        
+        // Apply the mode without saving (to avoid recursion)
+        await this.applyModeWithoutSaving(savedMode);
+        
+        console.log('✅ Successfully applied persisted mode:', savedMode);
+      } else {
+        console.log('📝 No persisted mode found or mode is normal, staying in normal mode');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error loading persisted state:', error);
+      // Continue with default state if loading fails
+    }
+  }
+
+  /**
+   * Apply mode without saving to storage (used for loading persisted state)
+   */
+  async applyModeWithoutSaving(mode) {
+    console.log('🔄 applyModeWithoutSaving called with mode:', mode);
+    
+    // Reset current state first
+    this.setNormalMode();
+    
+    // Set new mode
+    this.currentMode = mode;
+    
+    switch (mode) {
+      case 'side-by-side':
+        await this.setSideBySideMode();
+        break;
+      case 'overlay':
+        await this.setOverlayMode();
+        break;
+      case 'normal':
+      default:
+        this.setNormalMode();
+        break;
+    }
+  }
+
+  /**
+   * Save current state to chrome storage
+   */
+  async saveState() {
+    try {
+      await chrome.storage.local.set({
+        currentMode: this.currentMode,
+        currentIntent: this.currentIntent
+      });
+      console.log('💾 Saved state - Mode:', this.currentMode, 'Intent:', this.currentIntent);
+    } catch (error) {
+      console.error('❌ Error saving state:', error);
     }
   }
 }

@@ -151,23 +151,7 @@ class PopupController {
 
   async loadCurrentState() {
     try {
-      // Get saved state
-      const result = await chrome.storage.local.get(['currentMode', 'currentIntent']);
-      
-      if (result.currentMode) {
-        this.currentMode = result.currentMode;
-        this.updateButtonStates();
-      }
-      
-      if (result.currentIntent) {
-        this.currentIntent = result.currentIntent;
-        this.intentInput.value = this.currentIntent;
-      } else {
-        // Set default intent if none saved
-        this.intentInput.value = this.currentIntent;
-      }
-
-      // Get current state from content script
+      // First, try to get current state from content script (source of truth)
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       
       const response = await chrome.tabs.sendMessage(tab.id, {
@@ -177,11 +161,39 @@ class PopupController {
       if (response && response.mode) {
         this.currentMode = response.mode;
         this.updateButtonStates();
+        
+        // Also update intent from content script if available
+        if (response.intent) {
+          this.currentIntent = response.intent;
+          this.intentInput.value = this.currentIntent;
+        }
+        
+        console.log('Loaded state from content script - Mode:', this.currentMode, 'Intent:', this.currentIntent);
+      } else {
+        // Fallback: try to load from storage if content script isn't responding
+        console.log('Content script not responding, loading from storage...');
+        const result = await chrome.storage.local.get(['currentMode', 'currentIntent']);
+        
+        if (result.currentMode) {
+          this.currentMode = result.currentMode;
+          this.updateButtonStates();
+        }
+        
+        if (result.currentIntent) {
+          this.currentIntent = result.currentIntent;
+          this.intentInput.value = this.currentIntent;
+        } else {
+          // Set default intent if none saved
+          this.intentInput.value = this.currentIntent;
+        }
+        
+        console.log('Loaded state from storage - Mode:', this.currentMode, 'Intent:', this.currentIntent);
       }
 
     } catch (error) {
       console.log('Could not load current state:', error);
-      // This is normal if content script hasn't loaded yet
+      // This is normal if content script hasn't loaded yet - use defaults
+      this.intentInput.value = this.currentIntent;
     }
   }
 }
