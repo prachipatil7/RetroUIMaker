@@ -1,0 +1,398 @@
+/* 
+ * Retro UI Theme CSS
+ * Classic Windows 95/98 style interface
+ */
+
+/* Base retro styles */
+.retro-body {
+  font-family: 'MS Sans Serif', sans-serif;
+  background-color: #c0c0c0;
+  margin: 0;
+  padding: 8px;
+  font-size: 11px;
+  color: #000000;
+}
+
+/* Window containers */
+.retro-window {
+  background-color: #c0c0c0;
+  border: 2px outset #c0c0c0;
+  margin: 4px;
+  padding: 0;
+}
+
+.retro-window-header {
+  background: linear-gradient(90deg, #0080ff 0%, #0040c0 100%);
+  color: white;
+  padding: 2px 4px;
+  font-weight: bold;
+  font-size: 11px;
+  border-bottom: 1px solid #808080;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.retro-window-content {
+  padding: 8px;
+  background-color: #c0c0c0;
+}
+
+/* Buttons */
+.retro-button {
+  background-color: #c0c0c0;
+  border: 2px outset #c0c0c0;
+  padding: 2px 8px;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  color: #000000;
+  cursor: pointer;
+  min-width: 75px;
+  text-align: center;
+}
+
+.retro-button:hover {
+  background-color: #d4d4d4;
+}
+
+.retro-button:active {
+  border: 2px inset #c0c0c0;
+  background-color: #b8b8b8;
+}
+
+.retro-button:disabled {
+  color: #808080;
+  cursor: default;
+  background-color: #c0c0c0;
+}
+
+/* Input fields */
+.retro-input {
+  background-color: white;
+  border: 2px inset #c0c0c0;
+  padding: 2px 4px;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  color: #000000;
+}
+
+.retro-input:focus {
+  outline: none;
+  background-color: #ffffff;
+}
+
+/* Text areas */
+.retro-textarea {
+  background-color: white;
+  border: 2px inset #c0c0c0;
+  padding: 4px;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  color: #000000;
+  resize: none;
+}
+
+/* Labels */
+.retro-label {
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  color: #000000;
+  margin-right: 4px;
+}
+
+/* Checkboxes and Radio buttons */
+.retro-checkbox, .retro-radio {
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* Select dropdowns */
+.retro-select {
+  background-color: white;
+  border: 2px inset #c0c0c0;
+  padding: 1px;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  color: #000000;
+}
+
+/* Panels and groupboxes */
+.retro-panel {
+  background-color: #c0c0c0;
+  border: 1px solid #808080;
+  padding: 8px;
+  margin: 4px 0;
+}
+
+.retro-groupbox {
+  border: 2px groove #c0c0c0;
+  padding: 8px;
+  margin: 4px 0;
+  position: relative;
+}
+
+.retro-groupbox-title {
+  background-color: #c0c0c0;
+  padding: 0 4px;
+  position: absolute;
+  top: -6px;
+  left: 8px;
+  font-size: 11px;
+  color: #000000;
+}
+
+/* Lists */
+.retro-listbox {
+  background-color: white;
+  border: 2px inset #c0c0c0;
+  padding: 0;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  color: #000000;
+  overflow-y: auto;
+}
+
+.retro-list-item {
+  padding: 1px 4px;
+  cursor: pointer;
+}
+
+.retro-list-item:hover {
+  background-color: #316ac5;
+  color: white;
+}
+
+.retro-list-item.selected {
+  background-color: #316ac5;
+  color: white;
+}
+
+/* Tables */
+.retro-table {
+  border: 2px inset #c0c0c0;
+  background-color: white;
+  border-collapse: collapse;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+}
+
+.retro-table th {
+  background-color: #c0c0c0;
+  border: 1px outset #c0c0c0;
+  padding: 2px 4px;
+  text-align: left;
+  font-weight: normal;
+}
+
+.retro-table td {
+  border: 1px solid #e0e0e0;
+  padding: 2px 4px;
+  background-color: white;
+}
+
+.retro-table tr:nth-child(even) td {
+  background-color: #f8f8f8;
+}
+
+/* Toolbar */
+.retro-toolbar {
+  background-color: #c0c0c0;
+  border: 1px solid #808080;
+  padding: 2px;
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.retro-toolbar-button {
+  background-color: #c0c0c0;
+  border: 1px solid transparent;
+  padding: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.retro-toolbar-button:hover {
+  border: 1px outset #c0c0c0;
+}
+
+.retro-toolbar-button:active {
+  border: 1px inset #c0c0c0;
+}
+
+.retro-toolbar-separator {
+  width: 1px;
+  height: 20px;
+  background-color: #808080;
+  margin: 0 2px;
+}
+
+/* Status bar */
+.retro-statusbar {
+  background-color: #c0c0c0;
+  border: 1px inset #c0c0c0;
+  padding: 2px 4px;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  color: #000000;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+/* Menu bar */
+.retro-menubar {
+  background-color: #c0c0c0;
+  border-bottom: 1px solid #808080;
+  padding: 2px;
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+}
+
+.retro-menu-item {
+  display: inline-block;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.retro-menu-item:hover {
+  background-color: #316ac5;
+  color: white;
+}
+
+/* Progress bars */
+.retro-progressbar {
+  background-color: white;
+  border: 2px inset #c0c0c0;
+  height: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.retro-progressbar-fill {
+  background-color: #316ac5;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+/* Scrollbars */
+.retro-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #c0c0c0 #f0f0f0;
+}
+
+.retro-scrollbar::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+.retro-scrollbar::-webkit-scrollbar-track {
+  background-color: #c0c0c0;
+  border: 1px inset #c0c0c0;
+}
+
+.retro-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #c0c0c0;
+  border: 2px outset #c0c0c0;
+}
+
+.retro-scrollbar::-webkit-scrollbar-corner {
+  background-color: #c0c0c0;
+}
+
+/* Typography */
+.retro-title {
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 16px;
+  font-weight: bold;
+  color: #000000;
+  margin: 8px 0;
+}
+
+.retro-subtitle {
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 12px;
+  font-weight: bold;
+  color: #000000;
+  margin: 4px 0;
+}
+
+.retro-text {
+  font-family: 'MS Sans Serif', sans-serif;
+  font-size: 11px;
+  color: #000000;
+  line-height: 1.3;
+}
+
+/* Icons (placeholder for retro-style icons) */
+.retro-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.retro-icon-large {
+  width: 32px;
+  height: 32px;
+}
+
+/* Form layouts */
+.retro-form-row {
+  margin: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.retro-form-label {
+  min-width: 80px;
+  text-align: right;
+}
+
+.retro-form-input {
+  flex: 1;
+}
+
+/* Dialog styles */
+.retro-dialog {
+  background-color: #c0c0c0;
+  border: 2px outset #c0c0c0;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 250px;
+  box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.retro-dialog-buttons {
+  padding: 8px;
+  text-align: right;
+  border-top: 1px solid #808080;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Special utility classes */
+.retro-disabled {
+  color: #808080 !important;
+  cursor: default !important;
+}
+
+.retro-selected {
+  background-color: #316ac5 !important;
+  color: white !important;
+}
+
+.retro-focused {
+  outline: 1px dotted #000000;
+  outline-offset: -2px;
+}

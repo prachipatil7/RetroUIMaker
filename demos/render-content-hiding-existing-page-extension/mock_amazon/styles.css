@@ -1,0 +1,128 @@
+/* Retro UI Maker Extension Styles */
+
+/* Original Content Elements */
+.original-content-element {
+  transition: all 0.3s ease;
+}
+
+/* Hidden state for overlay mode */
+.original-content-element.hidden-by-extension {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+}
+
+/* Side-by-side layout styles */
+body.side-by-side-active {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Overlay mode styles */
+body.overlay-active {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Original Content Iframe */
+.original-content-iframe {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 50vw;
+  height: 100vh;
+  border: none;
+  z-index: 9997;
+  border-right: 2px solid #333;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.original-content-iframe.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Side-by-side container */
+.side-by-side-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9998;
+  pointer-events: none;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.side-by-side-container.hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Generated Content Overlay */
+.generated-content-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  opacity: 1;
+  visibility: visible;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+
+.generated-content-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Side-by-side mode positioning */
+.generated-content-overlay.side-by-side-mode {
+  right: 0;
+  left: auto;
+  width: 50vw;
+  border-left: 2px solid #333;
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Overlay mode positioning */
+.generated-content-overlay.overlay-mode {
+  width: 100vw;
+  height: 100vh;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #c0c0c0;
+}
+
+
+/* Responsive design */
+@media (max-width: 768px) {
+  /* Stack vertically on mobile for better usability */
+  .original-content-iframe {
+    width: 100vw;
+    height: 50vh;
+    border-right: none;
+    border-bottom: 2px solid #333;
+  }
+  
+  .generated-content-overlay.side-by-side-mode {
+    top: 50vh;
+    width: 100vw;
+    height: 50vh;
+    border-left: none;
+    border-top: 2px solid #333;
+  }
+}
