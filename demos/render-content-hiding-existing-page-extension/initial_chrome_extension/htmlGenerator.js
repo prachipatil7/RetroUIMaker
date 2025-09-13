@@ -16,7 +16,8 @@ const CACHE_FILES = [
   'sample_cached_content.html'
 ];
 
-contentCache.set("https://www.amazon.com/_I want to look through my past orders", "amazon_home_order.html");
+contentCache.set("https://www.amazon.com/_default", "amazon_home_order.html");
+contentCache.set("https://www.amazon.com/ref=nav_logo_default", "amazon_home_order.html");
 
 // Index to track which cache file to use next (simple round-robin)
 let cacheFileIndex = 0;
@@ -78,7 +79,8 @@ async function generatePageHTML(originalDOM, intent, old_html) {
   console.log('🔄 generatePageHTML called with intent:', intent, 'old_html length:', old_html?.length || 0);
   
   // Create cache key based on intent and page URL
-  const cacheKey = `${window.location.href}_${intent || 'default'}`;
+  // const cacheKey = `${window.location.href}_${intent || 'default'}`;
+  const cacheKey = `${window.location.href}_default`;
   
   // Check cache first - now reads from file instead of returning string directly
   if (contentCache.has(cacheKey)) {
@@ -87,12 +89,10 @@ async function generatePageHTML(originalDOM, intent, old_html) {
     const cachedContent = await readCacheFile(filename);
     if (cachedContent) {
       return cachedContent;
-    } else {
-      // File not found, remove from cache
-      console.warn('⚠️ Cache file not found, removing from cache:', filename);
-      contentCache.delete(cacheKey);
-    }
+    } 
   }
+  const fallbackContent = generateFallbackHTML(originalDOM, intent, old_html);
+  return fallbackContent;
   
   try {
     // Check if LLMPatch is available
