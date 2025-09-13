@@ -625,8 +625,11 @@ Remember: Create functional HTML that lets users accomplish their goals, not dec
       const apiKey = await this.getApiKey();
       const llmIntegration = new window.LLMIntegration();
       llmIntegration.configure(apiKey);
+
+      // First, filter the selectedDom to keep only important elements using LLMIntegration
+      const filteredDom = await llmIntegration.filterImportantElements(selectedDom);
       
-      const bodyInnerHTML = await llmIntegration.generateHtmlFromFiltered(selectedDom);
+      const bodyInnerHTML = await llmIntegration.generateHtmlFromFiltered(filteredDom);
       
       return `<!DOCTYPE html>
 <html lang="en">

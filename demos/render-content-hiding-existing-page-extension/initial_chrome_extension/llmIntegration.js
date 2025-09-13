@@ -458,8 +458,6 @@ class LLMIntegration {
       return cached;
     }
 
-    const prompt = this.buildFilterPrompt(domJson);
-    
     try {
       const response = await fetch(this.apiEndpoint, {
         method: 'POST',
