@@ -42,7 +42,8 @@ function resetMockStep() {
  */
 async function loadMockHTML(intent, step = mockStep) {
   try {
-    const mockFileName = intent === MOCK_AMAZON_PURCHASE_INTENT ? `mock_amazon_purchase${step}.html` : `mock_amazon${step}.html`;
+    // const mockFileName = intent === MOCK_AMAZON_PURCHASE_INTENT ? `mock_amazon_purchase${step}.html` : `mock_amazon${step}.html`;
+    const mockFileName = `mock_amazon_purchase${step}.html`;
     const mockUrl = chrome.runtime.getURL(`mocks/${mockFileName}`);
     console.log(`🎭 Loading mock file: ${mockFileName}`);
     

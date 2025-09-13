@@ -150,6 +150,10 @@ class DOMToggleExtension {
 
     // Listen for messages from generated content iframe
     window.addEventListener('message', (event) => {
+      if (event.data.type === 'SELECT_ELEMENT') {
+        this.clickElement(event.data.selector);
+        return;
+      }
       if (event.data.type === 'CLICK_ELEMENT') {
         this.clickElement(event.data.selector);
         // Increment mock step before generating new content

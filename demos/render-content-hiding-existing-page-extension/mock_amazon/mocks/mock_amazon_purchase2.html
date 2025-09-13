@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon - Shopping Cart</title>
+    <link rel="stylesheet" href="../retro-theme.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        .main-content {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 40px 20px;
+            background-color: white;
+        }
+        
+        .amazon-title {
+            text-align: center;
+            margin: 0 0 40px 0;
+        }
+        
+        .amazon-title h1 {
+            color: #3b5998;
+            font-size: 36px;
+            margin: 0;
+        }
+        
+        .cart-header {
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .cart-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .item-count {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .subtotal-section {
+            text-align: right;
+        }
+        
+        .subtotal-label {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .subtotal-amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff9900;
+        }
+        
+        .shipping-message {
+            background-color: #e7f3ff;
+            border: 2px solid #0066cc;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 30px;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .shipping-message .amount-needed {
+            color: #ff9900;
+            font-weight: bold;
+        }
+        
+        .prime-link {
+            color: #0066cc;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        .prime-link:hover {
+            text-decoration: underline;
+        }
+        
+        .cart-item {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            background-color: white;
+            position: relative;
+        }
+        
+        .deal-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #cc0c39;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .item-image {
+            flex-shrink: 0;
+        }
+        
+        .item-image img {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+        
+        .item-details {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .item-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            line-height: 1.4;
+        }
+        
+        .item-price {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ff9900;
+        }
+        
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: auto;
+        }
+        
+        .quantity-label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .quantity-stepper {
+            display: flex;
+            align-items: center;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+        }
+        
+        .quantity-btn {
+            background-color: #f0f0f0;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .quantity-btn:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .quantity-btn.delete {
+            color: #cc0c39;
+        }
+        
+        .quantity-display {
+            padding: 8px 15px;
+            font-size: 16px;
+            font-weight: bold;
+            min-width: 40px;
+            text-align: center;
+        }
+        
+        .item-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .action-link {
+            color: #0066cc;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .action-link:hover {
+            text-decoration: underline;
+        }
+        
+        .cart-actions {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #ddd;
+        }
+        
+        .cart-button {
+            background-color: #ff9900;
+            color: white;
+            border: 2px solid #e68a00;
+            padding: 15px 30px;
+            margin: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            display: inline-block;
+            min-width: 180px;
+            text-decoration: none;
+        }
+        
+        .cart-button:hover {
+            background-color: #e68a00;
+        }
+        
+        .cart-button.secondary {
+            background-color: #3b5998;
+            border-color: #2d4373;
+        }
+        
+        .cart-button.secondary:hover {
+            background-color: #2d4373;
+        }
+        
+        .nav-button {
+            background-color: #3b5998;
+            color: white;
+            border: 2px solid #2d4373;
+            padding: 12px 20px;
+            margin: 0 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            border-radius: 8px;
+        }
+        
+        .nav-button:hover {
+            background-color: #2d4373;
+        }
+        
+        @media (max-width: 600px) {
+            .cart-item {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .item-image img {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .cart-summary {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="main-content">
+        <div class="amazon-title">
+            <h1>Amazon</h1>
+        </div>
+        
+        <div class="cart-header">
+            <div class="cart-summary">
+                <div class="item-count" id="itemCount">1 item</div>
+                <div class="subtotal-section">
+                    <div class="subtotal-label">Subtotal</div>
+                    <div class="subtotal-amount" id="subtotalAmount">$24.29</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="cart-items">
+            <div class="cart-item" data-item-id="1" data-price="24.29">
+                
+                <div class="item-image">
+                    <img src="https://m.media-amazon.com/images/I/41NQWl1T9wL._AC_AA152_.jpg" alt="mygreen 14 Inch Backpack for Boys Girls, Kids Backpacks for Preschool, Kindergarten, Elementary with Adjustable Padded Straps Unicorn Pink">
+                </div>
+                
+                <div class="item-details">
+                    <div class="item-name">
+                        mygreen 14 Inch Backpack for Boys Girls, Kids Backpacks for Preschool, Kindergarten, Elementary with Adjustable Padded Straps Unicorn Pink
+                    </div>
+                    
+                    <div class="item-price">$24.29</div>
+                    
+                    <!-- <div class="quantity-controls">
+                        <span class="quantity-label">Qty:</span>
+                        <div class="quantity-stepper">
+                            <button class="quantity-btn delete" onclick="removeItem(1)" title="Delete item">🗑️</button>
+                            <div class="quantity-display" id="quantity-1">1</div>
+                            <button class="quantity-btn" onclick="increaseQuantity(1)">+</button>
+                        </div>
+                    </div> -->
+                    
+                </div>
+            </div>
+        </div>
+        
+        <div class="cart-actions">
+            <a href="#" class="cart-button" onclick="goToCart()">Go to Cart</a>
+            <a href="#" class="cart-button" onclick="proceedToCheckout()">Proceed to Checkout</a>
+            
+            <div style="margin-top: 20px;">
+                <a href="#" class="nav-button" onclick="continueShopping()">← Continue Shopping</a>
+                <a href="#" class="nav-button">My Account</a>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let cartItems = [
+            {
+                id: 1,
+                name: "mygreen 14 Inch Backpack for Boys Girls, Kids Backpacks for Preschool, Kindergarten, Elementary with Adjustable Padded Straps Unicorn Pink",
+                price: 24.29,
+                quantity: 1,
+                image: "https://m.media-amazon.com/images/I/41NQWl1T9wL._AC_AA152_.jpg"
+            }
+        ];
+
+        function updateCartDisplay() {
+            let totalItems = 0;
+            let subtotal = 0;
+            
+            cartItems.forEach(item => {
+                totalItems += item.quantity;
+                subtotal += item.price * item.quantity;
+            });
+            
+            document.getElementById('itemCount').textContent = totalItems === 1 ? '1 item' : `${totalItems} items`;
+            document.getElementById('subtotalAmount').textContent = `$${subtotal.toFixed(2)}`;
+        }
+
+        function increaseQuantity(itemId) {
+            const item = cartItems.find(i => i.id === itemId);
+            if (item) {
+                item.quantity++;
+                document.getElementById(`quantity-${itemId}`).textContent = item.quantity;
+                updateCartDisplay();
+            }
+        }
+
+        function removeItem(itemId) {
+            const confirmed = confirm('Are you sure you want to remove this item from your cart?');
+            if (confirmed) {
+                cartItems = cartItems.filter(item => item.id !== itemId);
+                const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
+                if (itemElement) {
+                    itemElement.remove();
+                }
+                updateCartDisplay();
+                
+                if (cartItems.length === 0) {
+                    document.querySelector('.cart-items').innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">Your cart is empty</div>';
+                }
+            }
+        }
+
+        function saveForLater(itemId) {
+            alert('Item saved for later!');
+        }
+
+        function shareItem(itemId) {
+            alert('Share functionality would open here!');
+        }
+
+        function goToCart() {
+            alert('Going to full cart page...');
+        }
+
+        function proceedToCheckout() {
+            if (cartItems.length === 0) {
+                alert('Your cart is empty!');
+                return;
+            }
+            alert('Proceeding to checkout...');
+        }
+
+        function continueShopping() {
+            window.history.back();
+        }
+
+        // Initialize display
+        updateCartDisplay();
+    </script>
+</body>
+</html>
