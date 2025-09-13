@@ -79,9 +79,6 @@ async function generatePageHTML(originalDOM, intent, old_html) {
     // Load the appropriate mock HTML file
     const mockHTML = await loadMockHTML(mockStep);
     
-    // Increment step for next time (cycling through mocks)
-    incrementMockStep();
-    
     return mockHTML;
   } catch (error) {
     console.error('Error loading mock HTML, falling back to static content:', error);

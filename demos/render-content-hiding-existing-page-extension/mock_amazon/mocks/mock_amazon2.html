@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon - Order Details</title>
+    <link rel="stylesheet" href="../retro-theme.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        .main-content {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 40px 20px;
+            background-color: white;
+        }
+        
+        .amazon-title {
+            text-align: center;
+            margin: 0 0 40px 0;
+        }
+        
+        .amazon-title h1 {
+            color: #3b5998;
+            font-size: 36px;
+            margin: 0;
+        }
+        
+        .status-section {
+            background-color: #f9f9f9;
+            border: 2px solid #e0e0e0;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .status-title {
+            color: #2a7f2a;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0 0 10px 0;
+        }
+        
+        .status-subtitle {
+            color: #666;
+            font-size: 16px;
+            margin: 0 0 15px 0;
+            line-height: 1.4;
+        }
+        
+        .refund-info {
+            color: #3b5998;
+            font-size: 14px;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        
+        .product-section {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #ddd;
+            background-color: #fafafa;
+        }
+        
+        .product-image {
+            flex-shrink: 0;
+        }
+        
+        .product-image img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            border: 1px solid #ddd;
+        }
+        
+        .product-details {
+            flex: 1;
+        }
+        
+        .product-title {
+            color: #3b5998;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0 0 15px 0;
+            line-height: 1.3;
+        }
+        
+        .product-title a {
+            color: #3b5998;
+            text-decoration: none;
+        }
+        
+        .product-title a:hover {
+            text-decoration: underline;
+        }
+        
+        .main-actions {
+            text-align: center;
+            margin-top: 40px;
+        }
+        
+        .main-action-button {
+            background-color: #ff9900;
+            color: white;
+            border: 2px solid #e68a00;
+            padding: 25px 50px;
+            cursor: pointer;
+            font-size: 22px;
+            font-weight: bold;
+            display: block;
+            width: 450px;
+            margin: 0 auto;
+        }
+        
+        .main-action-button:hover {
+            background-color: #e68a00;
+        }
+        
+        
+        .secondary-action-button {
+            background-color: #3b5998;
+            color: white;
+            border: 2px solid #2d4373;
+            padding: 15px 30px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            display: block;
+            width: 300px;
+            margin: 20px auto;
+        }
+        
+        .secondary-action-button:hover {
+            background-color: #2d4373;
+        }
+    </style>
+</head>
+<body>
+    <main class="main-content">
+        <div class="amazon-title">
+            <h1>Amazon</h1>
+        </div>
+        
+        <div class="status-section">
+            <h2 class="status-title">Return complete</h2>
+            <p class="status-subtitle">Your return is complete. Your refund has been issued.</p>
+            <div class="refund-info" onclick="showRefundInfo()">When will I get my refund?</div>
+        </div>
+        
+        <div class="product-section">
+            <div class="product-image">
+                <img src="https://m.media-amazon.com/images/I/71SsCNw-4bL._SS284_.jpg" 
+                     alt="Dell WD19TB Thunderbolt Dock">
+            </div>
+            
+            <div class="product-details">
+                <div class="product-title">
+                    <a href="#" onclick="viewProduct()">Dell WD19TB Thunderbolt Dock - 1 Year Warranty - Dell Docking Station Dual Monitor USB C with 180W, HDMI & DisplayPort Cable - Docking Station for Laptop & Computer (Renewed)</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-actions">
+            <button class="main-action-button" onclick="viewReturnStatus()">View return/refund status</button>
+            <button class="secondary-action-button" onclick="viewOrderDetails()">View order details</button>
+        </div>
+    </main>
+
+    <script>
+        function viewReturnStatus() {
+            const selector = "#a-autoid-4-announce";
+            
+            // Send message to parent window to click element in original iframe
+            parent.postMessage({
+                type: 'CLICK_ELEMENT',
+                selector: selector
+            }, '*');
+        }
+        
+        function viewProduct() {
+            // Link to product page
+            parent.postMessage({
+                type: 'CLICK_ELEMENT',
+                selector: 'a[href*="/dp/B0CL5FL4DW"]'
+            }, '*');
+        }
+        
+        function viewOrderDetails() {
+            // Link to order details page
+            parent.postMessage({
+                type: 'CLICK_ELEMENT',
+                selector: 'a[href*="/gp/css/order-details?orderID=113-5243241-0368265"]'
+            }, '*');
+        }
+        
+        
+        function showRefundInfo() {
+            alert('A refund will appear on your bank account or credit card statement within the next 7 days.');
+        }
+    </script>
+</body>
+</html>

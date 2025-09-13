@@ -152,10 +152,16 @@ class DOMToggleExtension {
     window.addEventListener('message', (event) => {
       if (event.data.type === 'CLICK_ELEMENT') {
         this.clickElement(event.data.selector);
+        // Increment mock step before generating new content
+        window.HTMLGenerator.incrementMockStep();
       }
-
+      
       this.refreshContent();
-      // this.generateContent();
+
+      // add small delay of 0.5 seconds, and then generate new content
+      setTimeout(() => {
+        this.generateContent();
+      }, 2000);
     });
   }
 

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon - Refund Status</title>
+    <link rel="stylesheet" href="../retro-theme.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        .main-content {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 40px 20px;
+            background-color: white;
+        }
+        
+        .amazon-title {
+            text-align: center;
+            margin: 0 0 40px 0;
+        }
+        
+        .amazon-title h1 {
+            color: #3b5998;
+            font-size: 36px;
+            margin: 0;
+        }
+        
+        .refund-status {
+            text-align: center;
+            background-color: #f9f9f9;
+            border: 2px solid #ddd;
+            padding: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .refund-title {
+            color: #3b5998;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0 0 15px 0;
+        }
+        
+        .refund-amount {
+            color: #333;
+            font-size: 18px;
+            margin: 0;
+        }
+        
+        
+        .refund-total {
+            background-color: #f0f0f0;
+            border: 2px solid #ddd;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .refund-total-label {
+            color: #3b5998;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .refund-total-amount {
+            color: #4caf50;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .product-info {
+            background-color: #f9f9f9;
+            border: 2px solid #ddd;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .product-title {
+            color: #3b5998;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0 0 15px 0;
+        }
+        
+        .product-details {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .product-details span {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .main-actions {
+            text-align: center;
+        }
+        
+        .continue-button {
+            background-color: #ff9900;
+            color: white;
+            border: 2px solid #e68a00;
+            padding: 15px 30px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            display: inline-block;
+            text-decoration: none;
+        }
+        
+        .continue-button:hover {
+            background-color: #e68a00;
+        }
+    </style>
+</head>
+<body>
+    <main class="main-content">
+        <div class="amazon-title">
+            <h1>Amazon</h1>
+        </div>
+        
+        <div class="refund-status">
+            <h2 class="refund-title">The financial institution is processing your refund</h2>
+            <p class="refund-amount">$148.39 will be credited to the original payment method by Sep 16</p>
+        </div>
+        
+        <div class="refund-total">
+            <span class="refund-total-label">Total refund</span>
+            <span class="refund-total-amount">$148.39</span>
+        </div>
+        
+        <div class="product-info">
+            <div class="product-title">Dell WD19TB Thunderbolt Dock - 1 Year Warranty</div>
+            <div class="product-details">
+                <span><strong>Order #:</strong> 113-5243241-0368265</span>
+                <span><strong>Quantity:</strong> 1</span>
+                <span><strong>Item price:</strong> $139.99</span>
+                <span><strong>Reason for return:</strong> Bought by mistake</span>
+                <span><strong>Status:</strong> Refund Issued</span>
+            </div>
+        </div>
+        
+        <div class="main-actions">
+            <a href="#" class="continue-button" onclick="continueShopping()">Continue Shopping</a>
+        </div>
+    </main>
+
+    <script>
+        function continueShopping() {
+            // Link to continue shopping (go to Amazon homepage)
+            parent.postMessage({
+                type: 'CLICK_ELEMENT',
+                selector: 'a[href="/"]'
+            }, '*');
+        }
+    </script>
+</body>
+</html>

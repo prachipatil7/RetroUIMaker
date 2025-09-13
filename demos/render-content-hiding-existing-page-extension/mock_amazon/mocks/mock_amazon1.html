@@ -130,7 +130,7 @@
         </div>
         
         <div class="button-section">
-            <button class="orders-button" onclick="viewPastOrders()">Returns & Orders</button>
+            <button class="orders-button" onclick="clickHandler()">Returns & Orders</button>
             <a href="#" class="nav-button">Hello, Akshay Account & Lists</a>
         </div>
     </main>
@@ -140,8 +140,14 @@
             // Will interact with underlying DOM later
         }
         
-        function viewPastOrders() {
-            // Will interact with underlying DOM later
+        function clickHandler() {
+            const selector = "#nav-orders";
+            
+            // Send message to parent window to click element in original iframe
+            parent.postMessage({
+                type: 'CLICK_ELEMENT',
+                selector: selector
+            }, '*');
         }
         
         // Allow Enter key to trigger search
