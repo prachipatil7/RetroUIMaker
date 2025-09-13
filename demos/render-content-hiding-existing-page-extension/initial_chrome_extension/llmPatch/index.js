@@ -11,6 +11,7 @@ class LLMPatch {
     this.apiEndpoint = 'https://api.openai.com/v1/chat/completions';
     this.model = 'gpt-5'; // Using 4.1 for both selection and patching
     this.apiKey = null;
+    this.selectionCache = new Map();
   }
 
   /**
@@ -469,56 +470,76 @@ Remember: Create functional HTML that lets users accomplish their goals, not dec
    * @returns {Promise<Object>} Filtered DOM JSON and selected selectors
    */
   async selectRelevantDomElements(originalDOM, intent) {
+    // Create cache key based on intent and page URL
+    const url = originalDOM.location ? originalDOM.location.href : window.location.href;
+    const cacheKey = `selection_${url}_${intent || 'default'}`;
+    
+    // Check cache first
+    // if (this.selectionCache.has(cacheKey)) {
+    //   console.log('📦 Using cached selection for:', cacheKey);
+    //   return this.selectionCache.get(cacheKey);
+    // }
+    
     try {
       const apiKey = await this.getApiKey();
-      
-      // Extract URL from the original DOM
-      const url = originalDOM.location ? originalDOM.location.href : window.location.href;
       
       // Use existing LLMIntegration to serialize DOM
       const llmIntegration = new window.LLMIntegration();
       const fullDomJson = llmIntegration.buildDomJson(originalDOM);
       
       // Pre-trim to reduce token usage - keep interactive and structural elements
-      const preTrimmedDom = this.preTrimDom(fullDomJson);
+      const preTrimmedElements = this.preTrimDom(fullDomJson);
       
       // Check if still too large for API
-      const domString = JSON.stringify(preTrimmedDom, null, 2);
-      const estimatedTokens = Math.ceil(domString.length / 4);
+      const domString = JSON.stringify(preTrimmedElements, null, 2);
+      // const estimatedTokens = Math.ceil(domString.length / 4);
       
-      if (estimatedTokens > 20000) {
-        console.warn(`DOM still too large (${estimatedTokens} tokens), using local filtering only`);
-        const llmIntegration = new window.LLMIntegration();
-        const filtered = llmIntegration.localFilterImportantElements(preTrimmedDom);
-        console.log('Filtered DOM JSON:', filtered);
-        return {
-          filteredDomJson: filtered,
-          selectedSelectors: this.extractSelectors(filtered)
-        };
-      }
+      // if (estimatedTokens > 20000) {
+      //   console.warn(`DOM still too large (${estimatedTokens} tokens), using local filtering only`);
+      //   // Since preTrimDom now returns filtered elements directly, we can use them as-is
+      //   console.log('Filtered elements type:', typeof preTrimmedElements, 'isArray:', Array.isArray(preTrimmedElements));
+      //   console.log('Filtered elements:', preTrimmedElements);
+      //   const result = {
+      //     filteredDomJson: preTrimmedElements,
+      //     selectedSelectors: this.extractSelectorsFromArray(preTrimmedElements)
+      //   };
+      //   this.selectionCache.set(cacheKey, result);
+      //   console.log('💾 Cached selection for:', cacheKey);
+      //   return result;
+      // }
       
-      const prompt = this.buildSelectionPrompt(preTrimmedDom, intent, url);
+      const prompt = this.buildSelectionPrompt(preTrimmedElements, intent, url);
       
       const response = await this.makeApiRequest(apiKey, prompt, 'selection');
       const data = await response.json();
       const result = JSON.parse(data.choices[0].message.content);
-      console.log('Filtered DOM JSON:', result);
-      return {
-        filteredDomJson: result.filtered_dom_tree || result,
-        selectedSelectors: this.extractSelectors(result.filtered_dom_tree || result)
+      console.log('Filtered elements:', result);
+      
+      // Handle both array format and object with filtered_dom_tree property
+      const filteredElements = Array.isArray(result) ? result : (result.filtered_dom_tree || result);
+      
+      const selectionResult = {
+        filteredDomJson: filteredElements,
+        selectedSelectors: this.extractSelectorsFromArray(filteredElements)
       };
+      this.selectionCache.set(cacheKey, selectionResult);
+      console.log('💾 Cached selection for:', cacheKey);
+      return selectionResult;
     } catch (error) {
       console.error('Error selecting relevant DOM elements:', error);
       // Fallback to local filtering
       const llmIntegration = new window.LLMIntegration();
       const fullDomJson = llmIntegration.buildDomJson(originalDOM);
-      const preTrimmedDom = this.preTrimDom(fullDomJson);
-      const filtered = llmIntegration.localFilterImportantElements(preTrimmedDom);
-      console.log('Filtered DOM JSON:', filtered);
-      return {
-        filteredDomJson: filtered,
-        selectedSelectors: this.extractSelectors(filtered)
+      const preTrimmedElements = this.preTrimDom(fullDomJson);
+      console.log('Filtered elements type:', typeof preTrimmedElements, 'isArray:', Array.isArray(preTrimmedElements));
+      console.log('Filtered elements:', preTrimmedElements);
+      const fallbackResult = {
+        filteredDomJson: preTrimmedElements,
+        selectedSelectors: this.extractSelectorsFromArray(preTrimmedElements)
       };
+      this.selectionCache.set(cacheKey, fallbackResult);
+      console.log('💾 Cached fallback selection for:', cacheKey);
+      return fallbackResult;
     }
   }
 
@@ -627,6 +648,17 @@ ${bodyInnerHTML}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Generated UI</title>
+  <script>
+    function clickHandler() {
+      const selector = "#a-autoid-2-announce";
+      
+      // Send message to parent window to click element in original iframe
+      parent.postMessage({
+        type: 'CLICK_ELEMENT',
+        selector: selector
+      }, '*');
+    }
+  </script>
 </head>
 <body class="retro-body">
   <div class="retro-window">
@@ -635,6 +667,7 @@ ${bodyInnerHTML}
     </div>
     <div class="retro-window-content">
       <p class="retro-text">Content generated from selected elements</p>
+      <button class="retro-button" onClick="clickHandler()">Test</button>
     </div>
   </div>
 </body>
@@ -645,7 +678,7 @@ ${bodyInnerHTML}
   /**
    * Pre-trim DOM to extract only functional elements (inputs, buttons, important text)
    * @param {Object} domJson - Full DOM JSON
-   * @returns {Object} Pre-trimmed DOM JSON with only functional elements
+   * @returns {Array} Array of filtered functional elements with only essential keys
    */
   preTrimDom(domJson) {
     const functionalElements = [];
@@ -654,22 +687,29 @@ ${bodyInnerHTML}
     const bodyElement = this.findBodyElement(domJson);
     if (!bodyElement) {
       console.warn('No body element found');
-      return domJson;
+      return [];
     }
     
     // Extract functional elements from body
     this.extractFunctionalElements(bodyElement, functionalElements);
     
-    console.log(`Extracted ${functionalElements.length} functional elements:`, functionalElements);
+    console.log(`Extracted ${functionalElements.length} functional elements`);
     
-    // Create a minimal DOM structure with just the functional elements
-    return {
-      tag: 'html',
-      children: [{
-        tag: 'body',
-        children: functionalElements
-      }]
-    };
+    // Filter each element to only include the specified keys
+    const keysToKeep = ['tag', 'id', 'label', 'text', 'selector', 'isInteractive', 'isNavigationCandidate'];
+    
+    const filteredElements = functionalElements.map(element => {
+      const filteredElement = {};
+      keysToKeep.forEach(key => {
+        if (element.hasOwnProperty(key)) {
+          filteredElement[key] = element[key];
+        }
+      });
+      return filteredElement;
+    });
+    
+    console.log('preTrimDom returning:', Array.isArray(filteredElements) ? `array with ${filteredElements.length} elements` : typeof filteredElements);
+    return filteredElements;
   }
 
   /**
@@ -844,21 +884,46 @@ ${bodyInnerHTML}
   }
 
   /**
+   * Extract selectors from array of filtered elements
+   * @param {Array} elements - Array of filtered elements
+   * @returns {string[]} Array of selectors
+   */
+  extractSelectorsFromArray(elements) {
+    // Safety check to ensure elements is an array
+    if (!Array.isArray(elements)) {
+      console.warn('extractSelectorsFromArray received non-array:', typeof elements, elements);
+      return [];
+    }
+    
+    return elements
+      .filter(element => element && element.selector)
+      .map(element => element.selector);
+  }
+
+  /**
+   * Clear the selection cache
+   */
+  clearSelectionCache() {
+    this.selectionCache.clear();
+    console.log('🗑️ Selection cache cleared');
+  }
+
+  /**
    * Build selection prompt
-   * @param {Object} domJson - DOM JSON
+   * @param {Array} elements - Array of filtered elements
    * @param {string} intent - User intent
    * @param {string} url - The URL of the current webpage
    * @returns {string} Formatted prompt
    */
-  buildSelectionPrompt(domJson, intent, url = '') {
+  buildSelectionPrompt(elements, intent, url = '') {
     // Estimate token count and truncate if needed
-    const domString = JSON.stringify(domJson, null, 2);
+    const domString = JSON.stringify(elements, null, 2);
     const estimatedTokens = Math.ceil(domString.length / 4); // Rough estimation
     
     if (estimatedTokens > 15000) { // If too large, truncate further
-      console.warn(`DOM too large (${estimatedTokens} tokens), truncating further`);
-      const truncatedDom = this.truncateDomJson(domJson, 30); // Further reduce nodes
-      return this.buildSelectionPrompt(truncatedDom, intent, url);
+      console.warn(`Elements too large (${estimatedTokens} tokens), truncating further`);
+      const truncatedElements = elements.slice(0, Math.floor(elements.length * 0.7)); // Take 70% of elements
+      return this.buildSelectionPrompt(truncatedElements, intent, url);
     }
     
     return `Extract ONLY the essential functional elements for navigation and core website functionality.
@@ -884,11 +949,9 @@ CORE FUNCTIONALITY TO EXTRACT:
 
 REMOVE: ads, social widgets, decorative elements, footer text, cookie banners
 
-Schema: {tag, id, classes[], role, name, type, aria{}, label, text, href, value, visible, bbox{x,y,w,h}, selector, isInteractive, isNavigationCandidate, children[]}
+ELEMENTS = ${domString}
 
-DOM_TREE = ${domString}
-
-Return filtered JSON with only the essential elements users need for basic navigation and core website functionality. Do not create any new elements or modify the existing elements! Only return elements that exist in the DOM. No hallucinations or creative liberties.`;
+Return a filtered array with only the essential elements users need for basic navigation and core website functionality. Each element should have: {tag, id, label, text, selector, isInteractive, isNavigationCandidate}. Do not create any new elements or modify the existing elements! Only return elements that exist in the original array. No hallucinations or creative liberties.`;
   }
 
   /**

@@ -141,14 +141,68 @@ class DOMToggleExtension {
         this.setIntent(request.intent);
         sendResponse({ success: true, intent: this.currentIntent });
       } else if (request.action === 'regenerateContent') {
-        this.regenerateContent();
+        this.generateContent();
         sendResponse({ success: true });
       }
+
       return true; // Indicates we will send a response asynchronously
+    });
+
+    // Listen for messages from generated content iframe
+    window.addEventListener('message', (event) => {
+      if (event.data.type === 'CLICK_ELEMENT') {
+        this.clickElement(event.data.selector);
+      }
+
+      this.refreshContent();
+      // this.generateContent();
     });
   }
 
+  clickElement(selector) {
+    try {
+      if (this.originalIframe && this.originalIframe.contentDocument) {
+        // Try to find and click the element in the original iframe
+        const element = this.originalIframe.contentDocument.querySelector(selector);
+        if (element) {
+          console.log('Clicking element in original iframe:', selector);
+          element.click();
+        } else {
+          console.warn('Element not found in original iframe:', selector);
+          // Fallback: try to click in the main document
+          const mainElement = document.querySelector(selector);
+          if (mainElement) {
+            console.log('Clicking element in main document:', selector);
+            mainElement.click();
+          } else {
+            console.warn('Element not found in main document either:', selector);
+          }
+        }
+      } else {
+        console.warn('Original iframe not available, trying main document');
+        // Fallback: try to click in the main document
+        const mainElement = document.querySelector(selector);
+        if (mainElement) {
+          console.log('Clicking element in main document:', selector);
+          mainElement.click();
+        } else {
+          console.warn('Element not found:', selector);
+        }
+      }
+    } catch (error) {
+      console.error('Error clicking element:', error);
+    }
+  }
+
   async setMode(mode) {
+    console.log('🔄 setMode called with mode:', mode, 'current mode:', this.currentMode);
+    
+    // Prevent duplicate mode switches
+    if (this.currentMode === mode) {
+      console.log('⚠️ Already in mode:', mode, 'skipping duplicate call');
+      return;
+    }
+    
     // Reset current state first
     this.setNormalMode();
     
@@ -170,6 +224,7 @@ class DOMToggleExtension {
   }
 
   async setSideBySideMode() {
+    console.log('🔄 setSideBySideMode called');
     this.currentMode = 'side-by-side';
     
     // Generate content first
@@ -194,6 +249,7 @@ class DOMToggleExtension {
   }
 
   async setOverlayMode() {
+    console.log('🔄 setOverlayMode called');
     this.currentMode = 'overlay';
     
     // Generate content first
@@ -231,6 +287,8 @@ class DOMToggleExtension {
   }
 
   async generateContent() {
+    console.log('🎯 generateContent called with intent:', this.currentIntent, 'mode:', this.currentMode);
+    
     if (!this.generatedContentDiv) {
       console.warn('Generated content div not available');
       return;
@@ -264,6 +322,31 @@ class DOMToggleExtension {
     console.log('Intent set to:', this.currentIntent);
   }
 
+  /**
+   * Refresh the original iframe content with current page state
+   */
+  refreshContent() {
+    console.log('Refreshing iframe to show updated state...');
+    
+    // Give the original action time to complete
+    setTimeout(() => {
+      try {
+        // If the iframe is currently visible, reload it to show updates
+        if (this.originalIframe && !this.originalIframe.classList.contains('hidden')) {
+          // Force reload by adding a timestamp parameter
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.set('_refresh', Date.now().toString());
+          this.originalIframe.src = currentUrl.toString();
+          
+          console.log('Successfully refreshed iframe to show updated state');
+        } else {
+          console.log('Iframe not visible, no refresh needed');
+        }
+      } catch (error) {
+        console.error('Error refreshing iframe:', error);
+      }
+    }, 500); // Wait 500ms for the original action to complete
+  }
   /**
    * Regenerate content with current intent
    */
