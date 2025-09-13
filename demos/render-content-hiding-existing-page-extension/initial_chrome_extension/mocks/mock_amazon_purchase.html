@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon - Product Selection</title>
+    <link rel="stylesheet" href="../retro-theme.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        .main-content {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 40px 20px;
+            background-color: white;
+        }
+        
+        .amazon-title {
+            text-align: center;
+            margin: 0 0 40px 0;
+        }
+        
+        .amazon-title h1 {
+            color: #3b5998;
+            font-size: 36px;
+            margin: 0;
+        }
+        
+        .product-section {
+            margin-bottom: 40px;
+        }
+        
+        .product-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .variant-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .variant-option {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: white;
+        }
+        
+        .variant-option:hover {
+            border-color: #ff9900;
+            background-color: #fffbf5;
+        }
+        
+        .variant-option.selected {
+            border-color: #ff9900;
+            background-color: #fff3cd;
+        }
+        
+        .variant-image {
+            width: 64px;
+            height: 64px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .variant-name {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .variant-price {
+            font-size: 16px;
+            font-weight: bold;
+            color: #ff9900;
+            margin-bottom: 5px;
+        }
+        
+        .variant-original-price {
+            font-size: 12px;
+            text-decoration: line-through;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .variant-status {
+            font-size: 12px;
+            color: #067d62;
+            font-weight: bold;
+        }
+        
+        .variant-status.limited {
+            color: #b12704;
+        }
+        
+        .purchase-section {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #ddd;
+        }
+        
+        .selected-info {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #fff3cd;
+            border-radius: 8px;
+            border: 2px solid #ff9900;
+        }
+        
+        .selected-variant {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .selected-price {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff9900;
+        }
+        
+        .purchase-button {
+            background-color: #ff9900;
+            color: white;
+            border: 2px solid #e68a00;
+            padding: 15px 30px;
+            margin: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            display: inline-block;
+            min-width: 180px;
+            text-decoration: none;
+        }
+        
+        .purchase-button:hover {
+            background-color: #e68a00;
+        }
+        
+        .purchase-button:disabled {
+            background-color: #ccc;
+            border-color: #aaa;
+            cursor: not-allowed;
+        }
+        
+        .nav-button {
+            background-color: #3b5998;
+            color: white;
+            border: 2px solid #2d4373;
+            padding: 12px 20px;
+            margin: 0 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            border-radius: 8px;
+        }
+        
+        .nav-button:hover {
+            background-color: #2d4373;
+        }
+    </style>
+</head>
+<body>
+    <main class="main-content">
+        <div class="amazon-title">
+            <h1>Amazon</h1>
+        </div>
+        
+        <div class="product-section">
+            <div class="product-title">Choose Your Design:</div>
+            
+            <div class="variant-grid">
+                <!-- <div class="variant-option" data-variant="colorful-cars" data-price="21.58" data-original="26.99">
+                    <img src="https://m.media-amazon.com/images/I/518LUMlQ8uL._SS64_.jpg" alt="Colorful Cars Light Blue" class="variant-image">
+                    <div class="variant-name">Colorful Cars Light Blue</div>
+                    <div class="variant-price">$21.58</div>
+                    <div class="variant-status">In Stock</div>
+                </div>
+                
+                <div class="variant-option" data-variant="rescue-vehicles" data-price="24.29" data-original="26.99">
+                    <img src="https://m.media-amazon.com/images/I/51eo7fdr2BL._SS64_.jpg" alt="Colorful Rescue Vehicles Light Blue" class="variant-image">
+                    <div class="variant-name">Rescue Vehicles Light Blue</div>
+                    <div class="variant-price">$24.29</div>
+                    <div class="variant-status">In Stock</div>
+                </div>
+                
+                <div class="variant-option" data-variant="tool-cars" data-price="24.29" data-original="26.99">
+                    <img src="https://m.media-amazon.com/images/I/51E+2P9xoAL._SS64_.jpg" alt="Colorful Tool Cars Dark Blue" class="variant-image">
+                    <div class="variant-name">Tool Cars Dark Blue</div>
+                    <div class="variant-price">$24.29</div>
+                    <div class="variant-status">In Stock</div>
+                </div>
+                 -->
+                <div class="variant-option" data-variant="dancing-girl" data-price="24.29" data-original="26.99">
+                    <img src="https://m.media-amazon.com/images/I/41kR7tkdTgL._SS64_.jpg" alt="Dancing Girl Pink" class="variant-image">
+                    <div class="variant-name">Dancing Girl Pink</div>
+                    <div class="variant-price">$24.29</div>
+                    <div class="variant-status">In Stock</div>
+                </div>
+                
+                <!-- <div class="variant-option" data-variant="dinosaur" data-price="24.29" data-original="26.99">
+                    <img src="https://m.media-amazon.com/images/I/51P6ICs15lL._SS64_.jpg" alt="Dinosaur Blue" class="variant-image">
+                    <div class="variant-name">Dinosaur Blue</div>
+                    <div class="variant-price">$24.29</div>
+                    <div class="variant-status limited">Only 1 left!</div>
+                </div>
+                
+                <div class="variant-option" data-variant="excavator" data-price="21.57" data-original="26.99">
+                    <img src="https://m.media-amazon.com/images/I/51BNTDnaJ6L._SS64_.jpg" alt="Excavator Blue" class="variant-image">
+                    <div class="variant-name">Excavator Blue</div>
+                    <div class="variant-price">$21.57</div>
+                    <div class="variant-status">In Stock</div>
+                </div>
+                
+                <div class="variant-option" data-variant="orange-red" data-price="24.29" data-original="26.99">
+                    <img src="https://m.media-amazon.com/images/I/518hZDI3l4L._SS64_.jpg" alt="Orange Red" class="variant-image">
+                    <div class="variant-name">Orange Red</div>
+                    <div class="variant-price">$24.29</div>
+                    <div class="variant-status">In Stock</div>
+                </div>
+                
+                <div class="variant-option" data-variant="space-rocket" data-price="24.29" data-original="26.99">
+                    <img src="https://m.media-amazon.com/images/I/51gR6-XdnLL._SS64_.jpg" alt="Rocket Black" class="variant-image">
+                    <div class="variant-name">Space Rocket Black</div>
+                    <div class="variant-price">$24.29</div>
+                    <div class="variant-status">In Stock</div>
+                </div>
+                
+                <div class="variant-option" data-variant="shark" data-price="24.29" data-original="26.99">
+                    <img src="https://m.media-amazon.com/images/I/51IznSR0fqL._SS64_.jpg" alt="Shark Blue" class="variant-image">
+                    <div class="variant-name">Shark Blue</div>
+                    <div class="variant-price">$24.29</div>
+                    <div class="variant-status">In Stock</div>
+                </div>
+                
+                <div class="variant-option" data-variant="space-green" data-price="21.58" data-original="26.99">
+                    <img src="https://m.media-amazon.com/images/I/51QuJ8cCGIL._SS64_.jpg" alt="Space Green" class="variant-image">
+                    <div class="variant-name">Space Green</div>
+                    <div class="variant-price">$21.58</div>
+                    <div class="variant-status">In Stock</div>
+                </div> -->
+                
+                <div class="variant-option selected" data-variant="unicorn" data-price="24.29" data-original="26.99">
+                    <img src="https://m.media-amazon.com/images/I/41NQWl1T9wL._SS64_.jpg" alt="Unicorn Pink" class="variant-image">
+                    <div class="variant-name">Unicorn Pink</div>
+                    <div class="variant-price">$24.29</div>
+                    <div class="variant-status limited">Only 2 left!</div>
+                </div>
+                
+                <!-- <div class="variant-option" data-variant="yellow" data-price="22.99" data-original="26.99">
+                    <img src="https://m.media-amazon.com/images/I/51ydRTJGrvL._SS64_.jpg" alt="Yellow" class="variant-image">
+                    <div class="variant-name">Yellow</div>
+                    <div class="variant-price">$22.99</div>
+                    <div class="variant-status">In Stock</div>
+                </div> -->
+            </div>
+        </div>
+        
+        <div class="purchase-section">
+            <div class="selected-info" id="selectedInfo">
+                <div class="selected-variant" id="selectedVariant">Unicorn Pink</div>
+                <div class="selected-price" id="selectedPrice">$24.29</div>
+            </div>
+            
+            <button class="purchase-button" onclick="addToCart()">Add to Cart</button>
+            <button class="purchase-button" onclick="buyNow()">Buy Now</button>
+            
+            <div style="margin-top: 20px;">
+                <a href="#" class="nav-button" onclick="goBack()">← Back to Search</a>
+                <a href="#" class="nav-button">My Account</a>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let selectedVariant = 'unicorn';
+        let selectedPrice = '24.29';
+        let selectedName = 'Unicorn Pink';
+
+        // Initialize with first selected option
+        document.addEventListener('DOMContentLoaded', function() {
+            updateSelectedInfo();
+        });
+
+        // Handle variant selection
+        document.querySelectorAll('.variant-option').forEach(option => {
+            option.addEventListener('click', function() {
+                // Remove selected class from all options
+                document.querySelectorAll('.variant-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                
+                // Add selected class to clicked option
+                this.classList.add('selected');
+                
+                // Update selected values
+                selectedVariant = this.dataset.variant;
+                selectedPrice = this.dataset.price;
+                selectedName = this.querySelector('.variant-name').textContent;
+                
+                updateSelectedInfo();
+            });
+        });
+
+        function updateSelectedInfo() {
+            document.getElementById('selectedVariant').textContent = selectedName;
+            document.getElementById('selectedPrice').textContent = '$' + selectedPrice;
+        }
+
+        function addToCart() {
+            alert(`Added ${selectedName} to cart for $${selectedPrice}`);
+        }
+
+        function buyNow() {
+            alert(`Proceeding to checkout with ${selectedName} for $${selectedPrice}`);
+        }
+
+        function goBack() {
+            // Will interact with underlying DOM later
+            window.history.back();
+        }
+    </script>
+</body>
+</html>
