@@ -9,7 +9,7 @@
 class LLMPatch {
   constructor() {
     this.apiEndpoint = 'https://api.openai.com/v1/chat/completions';
-    this.model = 'gpt-4.1'; // Using 4.1 for both selection and patching
+    this.model = 'gpt-5'; // Using 4.1 for both selection and patching
     this.apiKey = null;
   }
 
