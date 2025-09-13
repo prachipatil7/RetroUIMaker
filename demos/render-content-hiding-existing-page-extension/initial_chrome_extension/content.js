@@ -149,6 +149,14 @@ class DOMToggleExtension {
   }
 
   async setMode(mode) {
+    console.log('🔄 setMode called with mode:', mode, 'current mode:', this.currentMode);
+    
+    // Prevent duplicate mode switches
+    if (this.currentMode === mode) {
+      console.log('⚠️ Already in mode:', mode, 'skipping duplicate call');
+      return;
+    }
+    
     // Reset current state first
     this.setNormalMode();
     
@@ -170,6 +178,7 @@ class DOMToggleExtension {
   }
 
   async setSideBySideMode() {
+    console.log('🔄 setSideBySideMode called');
     this.currentMode = 'side-by-side';
     
     // Generate content first
@@ -194,6 +203,7 @@ class DOMToggleExtension {
   }
 
   async setOverlayMode() {
+    console.log('🔄 setOverlayMode called');
     this.currentMode = 'overlay';
     
     // Generate content first
@@ -231,6 +241,8 @@ class DOMToggleExtension {
   }
 
   async generateContent() {
+    console.log('🎯 generateContent called with intent:', this.currentIntent, 'mode:', this.currentMode);
+    
     if (!this.generatedContentDiv) {
       console.warn('Generated content div not available');
       return;
