@@ -55,10 +55,14 @@ async function generatePageHTML(originalDOM, intent, old_html) {
  * @param {Document} originalDOM - The original DOM object
  * @returns {string} Fallback HTML content
  */
-function generateFallbackHTML(originalDOM) {
+function generateFallbackHTML(originalDOM, intent, old_html) {
   // Extract some basic info from the original DOM for context
   const originalTitle = extractTitleFromDOM(originalDOM);
   const originalDomain = window.location.hostname;
+
+
+  console.log('old_html', old_html);
+  console.log('intent', intent);
   
   return `
     <!DOCTYPE html>
