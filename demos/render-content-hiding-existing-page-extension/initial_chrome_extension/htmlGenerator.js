@@ -21,6 +21,14 @@ function generatePageHTML(originalDOM) {
   const originalTitle = extractTitleFromDOM(originalDOM);
   const originalDomain = window.location.hostname;
   
+  // Detect all links on the current page
+  const pageLinks = detectPageLinks();
+  const linksListHTML = generateRetroLinksList(pageLinks);
+  
+  // Detect all inputs on the current page
+  const pageInputs = detectPageInputs();
+  const inputsListHTML = generateRetroInputsSection(pageInputs);
+  
   // LLM will generate clean HTML using retro classes - no inline styles
   return `
     <!DOCTYPE html>
@@ -86,6 +94,10 @@ function generatePageHTML(originalDOM) {
             </div>
           </div>
           
+          ${linksListHTML}
+          
+          ${inputsListHTML}
+          
           <div class="retro-groupbox">
             <div class="retro-groupbox-title">Sample Controls</div>
             <div class="retro-form-row">
@@ -118,6 +130,152 @@ function generatePageHTML(originalDOM) {
       <div class="retro-statusbar">
         Ready | ${new Date().toLocaleString()} | Generated from: ${originalDomain}
       </div>
+      
+      <script>
+        // Handle link clicks with proper navigation
+        document.addEventListener('DOMContentLoaded', function() {
+          const linksContainer = document.querySelector('.retro-links-container');
+          if (linksContainer) {
+            linksContainer.addEventListener('click', function(event) {
+              const linkItem = event.target.closest('.retro-link-item');
+              if (linkItem) {
+                event.preventDefault();
+                
+                const href = linkItem.getAttribute('data-href');
+                const target = linkItem.getAttribute('data-target');
+                const linkType = linkItem.getAttribute('data-link-type');
+                
+                if (href) {
+                  try {
+                    // Handle different types of links based on linkType
+                    switch (linkType) {
+                      case 'mailto':
+                      case 'tel':
+                        // For mailto and tel links, trigger system default handler
+                        if (window.parent && window.parent !== window) {
+                          window.parent.postMessage({
+                            type: 'openLink',
+                            href: href,
+                            target: '_self',
+                            linkType: linkType
+                          }, '*');
+                        } else {
+                          window.location.href = href;
+                        }
+                        break;
+                        
+                      case 'external':
+                        // For external links, always open in new tab/window
+                        if (window.parent && window.parent !== window) {
+                          window.parent.postMessage({
+                            type: 'openLink',
+                            href: href,
+                            target: '_blank',
+                            linkType: linkType
+                          }, '*');
+                        } else {
+                          window.open(href, '_blank');
+                        }
+                        break;
+                        
+                      case 'anchor':
+                        // For anchor links, scroll to the section in the parent page
+                        if (window.parent && window.parent !== window) {
+                          window.parent.postMessage({
+                            type: 'openLink',
+                            href: href,
+                            target: '_self',
+                            linkType: linkType
+                          }, '*');
+                        } else {
+                          window.location.href = href;
+                        }
+                        break;
+                        
+                      case 'internal':
+                      default:
+                        // For internal links, navigate in the parent window
+                        const finalTarget = target === '_blank' ? '_blank' : '_self';
+                        if (window.parent && window.parent !== window) {
+                          window.parent.postMessage({
+                            type: 'openLink',
+                            href: href,
+                            target: finalTarget,
+                            linkType: linkType
+                          }, '*');
+                        } else {
+                          if (finalTarget === '_blank') {
+                            window.open(href, '_blank');
+                          } else {
+                            window.location.href = href;
+                          }
+                        }
+                        break;
+                    }
+                  } catch (error) {
+                    console.warn('Could not navigate to link:', href, error);
+                    // Fallback: try to open in new window
+                    if (window.parent && window.parent !== window) {
+                      window.parent.postMessage({
+                        type: 'openLink',
+                        href: href,
+                        target: '_blank',
+                        linkType: linkType
+                      }, '*');
+                    } else {
+                      window.open(href, '_blank');
+                    }
+                  }
+                }
+              }
+            });
+          }
+        });
+        
+        // Handle input interactions and sync with original page
+        const inputsContainer = document.querySelector('.retro-inputs-container');
+        if (inputsContainer) {
+          // Handle text input changes
+          inputsContainer.addEventListener('input', function(event) {
+            const inputItem = event.target.closest('.retro-input-item');
+            if (inputItem && inputItem.getAttribute('data-input-type') === 'text') {
+              const originalName = inputItem.getAttribute('data-original-name');
+              const originalId = inputItem.getAttribute('data-original-id');
+              const newValue = inputItem.value;
+              
+              // Send message to parent to sync the original input
+              if (window.parent && window.parent !== window) {
+                window.parent.postMessage({
+                  type: 'syncInput',
+                  inputName: originalName,
+                  inputId: originalId,
+                  value: newValue,
+                  action: 'updateValue'
+                }, '*');
+              }
+            }
+          });
+          
+          // Handle submit button clicks
+          inputsContainer.addEventListener('click', function(event) {
+            const inputItem = event.target.closest('.retro-input-item');
+            if (inputItem && inputItem.getAttribute('data-input-type') === 'submit') {
+              const originalName = inputItem.getAttribute('data-original-name');
+              const originalId = inputItem.getAttribute('data-original-id');
+              
+              // Send message to parent to trigger the original submit button
+              if (window.parent && window.parent !== window) {
+                window.parent.postMessage({
+                  type: 'syncInput',
+                  inputName: originalName,
+                  inputId: originalId,
+                  action: 'click'
+                }, '*');
+              }
+            }
+          });
+        }
+      </script>
     </body>
     </html>
   `;
@@ -183,7 +341,256 @@ function extractTitleFromDOM(dom) {
 }
 
 /**
- * Gets the original DOM object of the page
+ * Detects all <a> tags on the current page and extracts their information
+ * 
+ * @returns {Array} Array of link objects with href, text, title, and target
+ */
+function detectPageLinks() {
+  try {
+    const links = [];
+    const anchorElements = document.querySelectorAll('a[href]');
+    
+    anchorElements.forEach((link, index) => {
+      const href = link.href;
+      const text = link.textContent.trim() || href;
+      const title = link.title || '';
+      const target = link.target || '';
+      
+      // Skip empty links or javascript: links
+      if (href && !href.startsWith('javascript:')) {
+        // Determine link type
+        let linkType = 'internal';
+        let isExternal = false;
+        
+        if (href.startsWith('mailto:')) {
+          linkType = 'mailto';
+        } else if (href.startsWith('tel:')) {
+          linkType = 'tel';
+        } else if (href.startsWith('http://') || href.startsWith('https://')) {
+          isExternal = !href.startsWith(window.location.origin);
+          linkType = isExternal ? 'external' : 'internal';
+        } else if (href.startsWith('#')) {
+          linkType = 'anchor';
+        } else if (href.startsWith('/') || href.startsWith('./') || href.startsWith('../')) {
+          linkType = 'internal';
+        }
+        
+        links.push({
+          index: index + 1,
+          href: href,
+          text: text,
+          title: title,
+          target: target,
+          linkType: linkType,
+          isExternal: isExternal
+        });
+      }
+    });
+    
+    return links;
+  } catch (error) {
+    console.warn('Could not detect page links:', error);
+    return [];
+  }
+}
+
+/**
+ * Generates HTML for a retro-styled list of links
+ * 
+ * @param {Array} links - Array of link objects from detectPageLinks
+ * @returns {string} HTML string for the retro link list
+ */
+function generateRetroLinksList(links) {
+  if (!links || links.length === 0) {
+    return `
+      <div class="retro-groupbox">
+        <div class="retro-groupbox-title">Page Links</div>
+        <p class="retro-text">No links detected on this page.</p>
+      </div>
+    `;
+  }
+  
+  const linkItems = links.map(link => {
+    // Choose icon based on link type
+    let icon = '';
+    switch (link.linkType) {
+      case 'external':
+        icon = ' 🌐';
+        break;
+      case 'mailto':
+        icon = ' ✉️';
+        break;
+      case 'tel':
+        icon = ' 📞';
+        break;
+      case 'anchor':
+        icon = ' #️⃣';
+        break;
+      case 'internal':
+        icon = ' 📄';
+        break;
+      default:
+        icon = '';
+    }
+    
+    const targetInfo = link.target === '_blank' ? ' (opens in new window)' : '';
+    const titleInfo = link.title ? ` - ${link.title}` : '';
+    const typeInfo = ` [${link.linkType}]`;
+    
+    // Escape quotes and handle different link types
+    const escapedHref = link.href.replace(/'/g, "\\'").replace(/"/g, '\\"');
+    const escapedTarget = (link.target || (link.linkType === 'external' ? '_blank' : '_self')).replace(/'/g, "\\'");
+    
+    return `
+      <div class="retro-list-item" style="display: flex; align-items: center; padding: 4px; border-bottom: 1px solid #e0e0e0;">
+        <span style="min-width: 30px; color: #808080; font-size: 10px;">${link.index}.</span>
+        <div style="flex: 1;">
+          <div class="retro-link-item" 
+               data-href="${escapedHref}" 
+               data-target="${escapedTarget}"
+               data-link-type="${link.linkType}"
+               style="font-weight: bold; color: #0000ff; cursor: pointer; text-decoration: underline;" 
+               title="Click to open: ${link.href}">
+            ${link.text}${icon}
+          </div>
+          <div style="font-size: 10px; color: #808080; margin-top: 2px;">
+            ${link.href}${typeInfo}${targetInfo}${titleInfo}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  return `
+    <div class="retro-groupbox">
+      <div class="retro-groupbox-title">Page Links (${links.length} found)</div>
+      <div class="retro-listbox retro-links-container" style="max-height: 300px; overflow-y: auto;">
+        ${linkItems}
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Detects input elements (text and submit) on the current page
+ * 
+ * @returns {Array} Array of input objects with type, value, attributes, and element reference
+ */
+function detectPageInputs() {
+  try {
+    const inputs = [];
+    const inputElements = document.querySelectorAll('input[type="text"], input[type="submit"]');
+    
+    inputElements.forEach((input, index) => {
+      const inputType = input.type;
+      const value = input.value || '';
+      const placeholder = input.placeholder || '';
+      const name = input.name || '';
+      const id = input.id || '';
+      const disabled = input.disabled;
+      const required = input.required;
+      
+      // Create unique identifier for syncing
+      const uniqueId = `retro-input-${index}`;
+      
+      inputs.push({
+        index: index + 1,
+        uniqueId: uniqueId,
+        type: inputType,
+        value: value,
+        placeholder: placeholder,
+        name: name,
+        id: id,
+        disabled: disabled,
+        required: required,
+        originalElement: input // Store reference to original element
+      });
+    });
+    
+    return inputs;
+  } catch (error) {
+    console.warn('Could not detect page inputs:', error);
+    return [];
+  }
+}
+
+/**
+ * Generates HTML for a retro-styled list of inputs
+ * 
+ * @param {Array} inputs - Array of input objects from detectPageInputs
+ * @returns {string} HTML string for the retro inputs section
+ */
+function generateRetroInputsSection(inputs) {
+  if (!inputs || inputs.length === 0) {
+    return `
+      <div class="retro-groupbox">
+        <div class="retro-groupbox-title">Page Inputs</div>
+        <p class="retro-text">No text inputs or submit buttons detected on this page.</p>
+      </div>
+    `;
+  }
+  
+  const inputItems = inputs.map(input => {
+    const icon = input.type === 'submit' ? ' 🔘' : ' 📝';
+    const requiredIndicator = input.required ? ' *' : '';
+    const disabledClass = input.disabled ? ' retro-disabled' : '';
+    const disabledAttr = input.disabled ? ' disabled' : '';
+    
+    if (input.type === 'submit') {
+      return `
+        <div class="retro-form-row" style="padding: 4px; border-bottom: 1px solid #e0e0e0;">
+          <span style="min-width: 30px; color: #808080; font-size: 10px;">${input.index}.</span>
+          <div style="flex: 1;">
+            <button class="retro-button retro-input-item${disabledClass}" 
+                    data-input-id="${input.uniqueId}"
+                    data-input-type="${input.type}"
+                    data-original-name="${input.name}"
+                    data-original-id="${input.id}"
+                    ${disabledAttr}>
+              ${input.value || 'Submit'}${icon}
+            </button>
+            <div style="font-size: 10px; color: #808080; margin-top: 2px;">
+              Submit Button${input.name ? ` (name: ${input.name})` : ''}${input.id ? ` (id: ${input.id})` : ''}${requiredIndicator}
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      return `
+        <div class="retro-form-row" style="padding: 4px; border-bottom: 1px solid #e0e0e0;">
+          <span style="min-width: 30px; color: #808080; font-size: 10px;">${input.index}.</span>
+          <div style="flex: 1;">
+            <label class="retro-label" style="font-weight: bold;">${input.name || input.id || `Input ${input.index}`}${icon}${requiredIndicator}</label>
+            <input type="text" 
+                   class="retro-input retro-input-item${disabledClass}" 
+                   data-input-id="${input.uniqueId}"
+                   data-input-type="${input.type}"
+                   data-original-name="${input.name}"
+                   data-original-id="${input.id}"
+                   value="${input.value}"
+                   placeholder="${input.placeholder}"
+                   ${disabledAttr}>
+            <div style="font-size: 10px; color: #808080; margin-top: 2px;">
+              Text Input${input.name ? ` (name: ${input.name})` : ''}${input.id ? ` (id: ${input.id})` : ''}${input.placeholder ? ` - ${input.placeholder}` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  }).join('');
+  
+  return `
+    <div class="retro-groupbox">
+      <div class="retro-groupbox-title">Page Inputs (${inputs.length} found)</div>
+      <div class="retro-inputs-container" style="max-height: 250px; overflow-y: auto;">
+        ${inputItems}
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Gets the original HTML content of the page
  * 
  * @returns {Document} The original DOM object
  */
@@ -213,6 +620,10 @@ if (typeof module !== 'undefined' && module.exports) {
     generatePageHTML,
     wrapForSideBySide,
     extractTitleFromDOM,
-    getOriginalDOM
+    getOriginalDOM,
+    detectPageLinks,
+    generateRetroLinksList,
+    detectPageInputs,
+    generateRetroInputsSection
   };
 }

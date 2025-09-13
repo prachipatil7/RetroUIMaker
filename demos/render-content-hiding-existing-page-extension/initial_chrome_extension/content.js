@@ -9,6 +9,7 @@ class DOMToggleExtension {
     this.overlayButton = null;
     this.buttonContainer = null;
     this.sideBarContainer = null;
+    this.stateKey = 'retroui_toggle_state';
     this.init();
   }
 
@@ -30,6 +31,7 @@ class DOMToggleExtension {
     this.createOriginalIframe();
     this.createGeneratedContentDiv();
     this.attachEventListeners();
+    this.restoreToggleState();
   }
 
   createButtonContainer() {
@@ -139,6 +141,37 @@ class DOMToggleExtension {
     this.sideBySideButton.addEventListener('click', () => this.setSideBySideMode());
     this.overlayButton.addEventListener('click', () => this.setOverlayMode());
     this.resetButton.addEventListener('click', () => this.setNormalMode());
+    
+    // Listen for messages from iframe to handle link clicks and input sync
+    window.addEventListener('message', (event) => {
+      // Verify the message is from our iframe
+      if (event.data && event.data.type === 'openLink') {
+        const { href, target, linkType } = event.data;
+        if (href) {
+          try {
+            // Save current toggle state before navigation for internal links
+            if (linkType === 'internal' || linkType === 'anchor') {
+              this.saveToggleState();
+            }
+            
+            if (target === '_blank') {
+              window.open(href, '_blank');
+            } else {
+              window.location.href = href;
+            }
+          } catch (error) {
+            console.warn('Could not open link:', href, error);
+            // Fallback: try opening in new window
+            window.open(href, '_blank');
+          }
+        }
+      }
+      
+      // Handle input synchronization
+      if (event.data && event.data.type === 'syncInput') {
+        this.handleInputSync(event.data);
+      }
+    });
   }
 
   setSideBySideMode() {
@@ -223,6 +256,148 @@ class DOMToggleExtension {
       case 'normal':
         this.resetButton.classList.add('active');
         break;
+    }
+    
+    // Save the current state when toggling
+    this.saveToggleState();
+  }
+
+  saveToggleState() {
+    try {
+      sessionStorage.setItem(this.stateKey, JSON.stringify({
+        isToggled: this.isToggled,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      console.warn('Could not save toggle state:', error);
+    }
+  }
+
+  restoreToggleState() {
+    try {
+      const savedState = sessionStorage.getItem(this.stateKey);
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        // Only restore if the state was saved recently (within 5 minutes)
+        const fiveMinutes = 5 * 60 * 1000;
+        if (Date.now() - state.timestamp < fiveMinutes && state.isToggled) {
+          // Restore the toggled state
+          this.toggleView();
+        }
+      }
+    } catch (error) {
+      console.warn('Could not restore toggle state:', error);
+    }
+  }
+
+  handleInputSync(data) {
+    try {
+      const { inputName, inputId, value, action } = data;
+      
+      // Find the original input element by name or id
+      let originalInput = null;
+      
+      if (inputId) {
+        originalInput = document.getElementById(inputId);
+      }
+      
+      if (!originalInput && inputName) {
+        originalInput = document.querySelector(`input[name="${inputName}"]`);
+      }
+      
+      if (originalInput) {
+        if (action === 'updateValue' && originalInput.type === 'text') {
+          // Sync text input value
+          originalInput.value = value;
+          
+          // Trigger input event to notify any listeners
+          const inputEvent = new Event('input', { bubbles: true });
+          originalInput.dispatchEvent(inputEvent);
+          
+          // Also trigger change event for compatibility
+          const changeEvent = new Event('change', { bubbles: true });
+          originalInput.dispatchEvent(changeEvent);
+          
+        } else if (action === 'click' && originalInput.type === 'submit') {
+          // Trigger submit button click
+          originalInput.click();
+        }
+      } else {
+        console.warn('Could not find original input element:', { inputName, inputId });
+      }
+    } catch (error) {
+      console.warn('Could not sync input:', error);
+    }
+    
+    // Save the current state when toggling
+    this.saveToggleState();
+  }
+
+  saveToggleState() {
+    try {
+      sessionStorage.setItem(this.stateKey, JSON.stringify({
+        isToggled: this.isToggled,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      console.warn('Could not save toggle state:', error);
+    }
+  }
+
+  restoreToggleState() {
+    try {
+      const savedState = sessionStorage.getItem(this.stateKey);
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        // Only restore if the state was saved recently (within 5 minutes)
+        const fiveMinutes = 5 * 60 * 1000;
+        if (Date.now() - state.timestamp < fiveMinutes && state.isToggled) {
+          // Restore the toggled state
+          this.toggleView();
+        }
+      }
+    } catch (error) {
+      console.warn('Could not restore toggle state:', error);
+    }
+  }
+
+  handleInputSync(data) {
+    try {
+      const { inputName, inputId, value, action } = data;
+      
+      // Find the original input element by name or id
+      let originalInput = null;
+      
+      if (inputId) {
+        originalInput = document.getElementById(inputId);
+      }
+      
+      if (!originalInput && inputName) {
+        originalInput = document.querySelector(`input[name="${inputName}"]`);
+      }
+      
+      if (originalInput) {
+        if (action === 'updateValue' && originalInput.type === 'text') {
+          // Sync text input value
+          originalInput.value = value;
+          
+          // Trigger input event to notify any listeners
+          const inputEvent = new Event('input', { bubbles: true });
+          originalInput.dispatchEvent(inputEvent);
+          
+          // Also trigger change event for compatibility
+          const changeEvent = new Event('change', { bubbles: true });
+          originalInput.dispatchEvent(changeEvent);
+          
+        } else if (action === 'click' && originalInput.type === 'submit') {
+          // Trigger submit button click
+          originalInput.click();
+        }
+      } else {
+        console.warn('Could not find original input element:', { inputName, inputId });
+      }
+    } catch (error) {
+      console.warn('Could not sync input:', error);
     }
   }
 }
