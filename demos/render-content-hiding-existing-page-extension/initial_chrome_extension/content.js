@@ -146,6 +146,11 @@ Pseudo-classes and Modifiers
 
   createOriginalIframe() {
     this.originalIframe = document.createElement('iframe');
+    if (!this.originalIframe) {
+      console.error('Failed to create iframe element');
+      return;
+    }
+    
     this.originalIframe.id = 'original-content-iframe';
     this.originalIframe.className = 'original-content-iframe hidden';
     this.originalIframe.style.cssText = `
@@ -159,6 +164,16 @@ Pseudo-classes and Modifiers
       border-right: 2px solid #333;
       box-shadow: 5px 0 15px rgba(0, 0, 0, 0.2);
     `;
+    
+    // Add error handling for iframe
+    this.originalIframe.onload = function() {
+      console.log('Original iframe loaded successfully');
+    };
+    
+    this.originalIframe.onerror = function(error) {
+      console.error('Original iframe failed to load:', error);
+    };
+    
     document.body.appendChild(this.originalIframe);
   }
 
@@ -210,7 +225,9 @@ Pseudo-classes and Modifiers
 
   clickElement(selector) {
     try {
-      if (this.originalIframe && this.originalIframe.contentDocument) {
+      if (this.originalIframe && 
+          this.originalIframe.contentDocument && 
+          typeof this.originalIframe.contentDocument.querySelector === 'function') {
         // Try to find and click the element in the original iframe
         const element = this.originalIframe.contentDocument.querySelector(selector);
         if (element) {
@@ -245,7 +262,9 @@ Pseudo-classes and Modifiers
 
   changeElement(selector, value) {
     try {
-      if (this.originalIframe && this.originalIframe.contentDocument) {
+      if (this.originalIframe && 
+          this.originalIframe.contentDocument && 
+          typeof this.originalIframe.contentDocument.querySelector === 'function') {
         // Try to find and update the element in the original iframe
         const element = this.originalIframe.contentDocument.querySelector(selector);
         if (element) {
@@ -422,16 +441,23 @@ Pseudo-classes and Modifiers
     // Give the original action time to complete
     setTimeout(() => {
       try {
-        // If the iframe is currently visible, reload it to show updates
-        if (this.originalIframe && !this.originalIframe.classList.contains('hidden')) {
+        // Check if iframe exists and is currently visible
+        if (this.originalIframe && 
+            typeof this.originalIframe.classList !== 'undefined' && 
+            !this.originalIframe.classList.contains('hidden')) {
           // Force reload by adding a timestamp parameter
           const currentUrl = new URL(window.location.href);
           currentUrl.searchParams.set('_refresh', Date.now().toString());
-          this.originalIframe.src = currentUrl.toString();
           
-          console.log('Successfully refreshed iframe to show updated state');
+          // Ensure iframe is not null before setting src
+          if (this.originalIframe) {
+            this.originalIframe.src = currentUrl.toString();
+            console.log('Successfully refreshed iframe to show updated state');
+          } else {
+            console.warn('Iframe became null during refresh');
+          }
         } else {
-          console.log('Iframe not visible, no refresh needed');
+          console.log('Iframe not visible or not available, no refresh needed');
         }
       } catch (error) {
         console.error('Error refreshing iframe:', error);

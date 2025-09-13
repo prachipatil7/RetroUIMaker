@@ -207,6 +207,18 @@ function wrapForSideBySide(generatedHTML) {
     `</head>`
   );
   
+  // Ensure we have valid HTML before creating iframe
+  if (!htmlWithCSS || typeof htmlWithCSS !== 'string') {
+    console.error('Invalid HTML provided to wrapForSideBySide:', htmlWithCSS);
+    return '<div class="error">Invalid content</div>';
+  }
+  
+  // Escape the HTML content properly for srcdoc
+  const escapedHTML = htmlWithCSS
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/`/g, '&#96;');
+  
   return `
     <div class="generated-content-wrapper" style="
       width: 100%;
@@ -221,7 +233,9 @@ function wrapForSideBySide(generatedHTML) {
           border: none;
           background: #c0c0c0;
         "
-        srcdoc="${htmlWithCSS.replace(/"/g, '&quot;')}"
+        srcdoc="${escapedHTML}"
+        onload="console.log('Iframe loaded successfully')"
+        onerror="console.error('Iframe failed to load')"
       ></iframe>
     </div>
   `;
