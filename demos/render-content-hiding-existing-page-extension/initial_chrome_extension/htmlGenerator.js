@@ -11,9 +11,11 @@
  * This function will be replaced with LLM-generated content
  * 
  * @param {Document} originalDOM - The original DOM object of the page
+ * @param {string} intent - The intent or purpose for the generated UI
+ * @param {string} old_html - Previous HTML version for comparison/iteration
  * @returns {string} Clean HTML content without layout constraints
  */
-function generatePageHTML(originalDOM) {
+function generatePageHTML(originalDOM, intent, old_html) {
   // For now, we'll create a static hello world page
   // Later this can be replaced with LLM-generated content based on originalDOM
   

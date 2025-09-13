@@ -81,7 +81,7 @@ class DOMToggleExtension {
     const originalDOM = window.HTMLGenerator.getOriginalDOM();
     
     // Generate clean HTML page (what LLM would generate)
-    const cleanGeneratedHTML = window.HTMLGenerator.generatePageHTML(originalDOM);
+    const cleanGeneratedHTML = window.HTMLGenerator.generatePageHTML(originalDOM, '', '');
     
     // Wrap it for side-by-side display
     const wrappedHTML = window.HTMLGenerator.wrapForSideBySide(cleanGeneratedHTML);
