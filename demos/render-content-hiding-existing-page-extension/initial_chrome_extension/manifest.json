@@ -20,7 +20,11 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["retro-theme.css", "templates/base_template.html"],
+      "resources": [
+        "retro-theme.css", 
+        "templates/base_template.html",
+        "cache/*"
+      ],
       "matches": ["<all_urls>"]
     }
   ],

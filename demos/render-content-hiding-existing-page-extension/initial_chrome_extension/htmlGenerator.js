@@ -7,15 +7,63 @@
  */
 
 // createCopy function is available globally from create_copy.js loaded before this script
-// Cache to prevent duplicate LLM calls
+// Cache to prevent duplicate LLM calls - now stores file names instead of HTML content
 const contentCache = new Map();
 
+// Predefined cache file names - hardcoded list
+const CACHE_FILES = [
+  'amazon_home_order.html',
+  'sample_cached_content.html'
+];
+
+contentCache.set("https://www.amazon.com/_I want to look through my past orders", "amazon_home_order.html");
+
+// Index to track which cache file to use next (simple round-robin)
+let cacheFileIndex = 0;
+
 /**
- * Clear the content cache
+ * Get the next predefined cache filename
+ * @returns {string} Predefined cache filename
+ */
+function getNextCacheFileName() {
+  const filename = CACHE_FILES[cacheFileIndex];
+  cacheFileIndex = (cacheFileIndex + 1) % CACHE_FILES.length;
+  return filename;
+}
+
+/**
+ * Read HTML content from a predefined cache file
+ * @param {string} filename - The filename to read from
+ * @returns {Promise<string|null>} HTML content or null if not found
+ */
+async function readCacheFile(filename) {
+  try {
+    // Read from the cache directory using fetch
+    const cacheUrl = chrome.runtime.getURL(`cache/${filename}`);
+    const response = await fetch(cacheUrl);
+    
+    if (response.ok) {
+      const content = await response.text();
+      console.log(`📁 Read cache file: ${filename}`);
+      return content;
+    } else {
+      console.warn(`Cache file not found: ${filename}`);
+      return null;
+    }
+  } catch (error) {
+    console.error('Failed to read cache file:', error);
+    return null;
+  }
+}
+
+/**
+ * Clear the content cache (predefined files remain)
  */
 function clearContentCache() {
   contentCache.clear();
-  console.log('🗑️ Content cache cleared');
+  // Reset the file index to start from beginning
+  cacheFileIndex = 0;
+  console.log('🗑️ Content cache cleared, reset to use predefined files');
 }
 
 /**
@@ -32,18 +80,38 @@ async function generatePageHTML(originalDOM, intent, old_html) {
   // Create cache key based on intent and page URL
   const cacheKey = `${window.location.href}_${intent || 'default'}`;
   
-  // Check cache first
+  // Check cache first - now reads from file instead of returning string directly
   if (contentCache.has(cacheKey)) {
     console.log('📦 Using cached content for:', cacheKey);
-    return contentCache.get(cacheKey);
+    const filename = contentCache.get(cacheKey);
+    const cachedContent = await readCacheFile(filename);
+    if (cachedContent) {
+      return cachedContent;
+    } else {
+      // File not found, remove from cache
+      console.warn('⚠️ Cache file not found, removing from cache:', filename);
+      contentCache.delete(cacheKey);
+    }
   }
   
   try {
     // Check if LLMPatch is available
     if (!window.LLMPatch) {
       console.warn('LLMPatch not available, falling back to static content');
+      
+      // Use predefined cache file instead of generating content
+      const filename = getNextCacheFileName();
+      contentCache.set(cacheKey, filename);
+      
+      // Read and return the predefined cache content
+      const cachedContent = await readCacheFile(filename);
+      if (cachedContent) {
+        console.log(`📦 Using predefined cache file: ${filename}`);
+        return cachedContent;
+      }
+      
+      // Fallback if cache file can't be read
       const fallbackContent = generateFallbackHTML(originalDOM, intent, old_html);
-      contentCache.set(cacheKey, fallbackContent);
       return fallbackContent;
     }
 
@@ -131,23 +199,43 @@ async function generatePageHTML(originalDOM, intent, old_html) {
     `;
     console.log('Assembled HTML:', updatedHtml);
     
-    // Cache the result
-    contentCache.set(cacheKey, updatedHtml);
-    console.log('💾 Cached content for:', cacheKey);
+    // Use predefined cache file instead of storing generated content
+    const filename = getNextCacheFileName();
+    contentCache.set(cacheKey, filename);
+    console.log('💾 Mapped cache key to predefined file:', filename, 'for key:', cacheKey);
     
-    return updatedHtml;
+    // Return the predefined cache content instead of generated content
+    const cachedContent = await readCacheFile(filename);
+    return cachedContent || updatedHtml;
   } catch (error) {
     console.error('Error in LLM pipeline, falling back to static content:', error);
     
     // Try to load base template as fallback
     try {
       const baseTemplate = await window.LLMPatch.loadBaseTemplate();
-      contentCache.set(cacheKey, baseTemplate);
-      return baseTemplate;
+      
+      // Use predefined cache file
+      const filename = getNextCacheFileName();
+      contentCache.set(cacheKey, filename);
+      
+      // Return predefined cache content instead of base template
+      const cachedContent = await readCacheFile(filename);
+      return cachedContent || baseTemplate;
     } catch (templateError) {
       console.error('Failed to load base template:', templateError);
+      
+      // Use predefined cache file for fallback
+      const filename = getNextCacheFileName();
+      contentCache.set(cacheKey, filename);
+      
+      // Try to read predefined cache content first
+      const cachedContent = await readCacheFile(filename);
+      if (cachedContent) {
+        return cachedContent;
+      }
+      
+      // Final fallback to generated content
       const fallbackContent = generateFallbackHTML(originalDOM, intent, old_html);
-      contentCache.set(cacheKey, fallbackContent);
       return fallbackContent;
     }
   }
@@ -276,7 +364,9 @@ if (typeof module !== 'undefined' && module.exports) {
     wrapForSideBySide,
     extractTitleFromDOM,
     getOriginalDOM,
-    clearContentCache
+    clearContentCache,
+    readCacheFile,
+    getNextCacheFileName
   };
 } else {
   // Browser environment - attach to window
@@ -285,6 +375,8 @@ if (typeof module !== 'undefined' && module.exports) {
     wrapForSideBySide,
     extractTitleFromDOM,
     getOriginalDOM,
-    clearContentCache
+    clearContentCache,
+    readCacheFile,
+    getNextCacheFileName
   };
 }
