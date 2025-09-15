@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timer App</title>
+    <link rel="stylesheet" href="../retro-theme.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.5s ease;
+            background-color: #4A90E2; /* Start with blue */
+        }
+        
+        .timer-container {
+            text-align: center;
+            padding: 80px 60px;
+            background-color: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            width: 500px;
+            height: 600px;
+            position: relative;
+            clip-path: polygon(
+                15% 0%, 85% 0%, 
+                85% 35%, 70% 45%, 
+                85% 55%, 85% 100%, 
+                15% 100%, 15% 55%, 
+                30% 45%, 15% 35%
+            );
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .timer-title {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            color: #333;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .timer-display {
+            font-size: 72px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 40px 0;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.2);
+            font-family: 'Courier New', monospace;
+            letter-spacing: 4px;
+        }
+        
+        .timer-controls {
+            margin-top: 40px;
+        }
+        
+        .control-button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 0 10px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .control-button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .control-button:active {
+            transform: translateY(0);
+        }
+        
+        .start-button {
+            background-color: #27ae60;
+        }
+        
+        .start-button:hover {
+            background-color: #229954;
+        }
+        
+        .stop-button {
+            background-color: #e74c3c;
+        }
+        
+        .stop-button:hover {
+            background-color: #c0392b;
+        }
+        
+        .reset-button {
+            background-color: #f39c12;
+        }
+        
+        .reset-button:hover {
+            background-color: #e67e22;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            margin: 30px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: #3498db;
+            border-radius: 5px;
+            transition: width 1s linear, background-color 0.5s ease;
+            width: 100%;
+        }
+        
+        .warning-text {
+            font-size: 18px;
+            color: #e74c3c;
+            margin-top: 20px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .warning-text.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="timer-container">
+        <div class="timer-title">COUNTDOWN TIMER</div>
+        
+        <div class="timer-display" id="timerDisplay">10:00</div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="warning-text" id="warningText">TIME IS RUNNING OUT!</div>
+    </div>
+
+    <script>
+        let totalSeconds = 10 * 60; // 10 minutes in seconds
+        let currentSeconds = totalSeconds;
+        let timerInterval = null;
+        let isRunning = false;
+        
+        const timerDisplay = document.getElementById('timerDisplay');
+        const progressFill = document.getElementById('progressFill');
+        const warningText = document.getElementById('warningText');
+        const body = document.body;
+        
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+        
+        function updateDisplay() {
+            timerDisplay.textContent = formatTime(currentSeconds);
+            
+            // Update progress bar
+            const progressPercentage = (currentSeconds / totalSeconds) * 100;
+            progressFill.style.width = progressPercentage + '%';
+            
+            // Update background color based on time remaining
+            updateBackgroundColor();
+            
+            // Show warning when less than 2 minutes remain
+            if (currentSeconds <= 120 && currentSeconds > 0) {
+                warningText.classList.add('show');
+            } else {
+                warningText.classList.remove('show');
+            }
+        }
+        
+        function updateBackgroundColor() {
+            const progressRatio = currentSeconds / totalSeconds;
+            
+            if (progressRatio > 0.5) {
+                // Blue to yellow transition (first half)
+                const blueToYellowRatio = (progressRatio - 0.5) * 2; // 0 to 1
+                const red = Math.round(74 + (255 - 74) * (1 - blueToYellowRatio));
+                const green = Math.round(144 + (255 - 144) * (1 - blueToYellowRatio));
+                const blue = Math.round(226 * blueToYellowRatio);
+                body.style.backgroundColor = `rgb(${red}, ${green}, ${blue})`;
+                progressFill.style.backgroundColor = '#3498db';
+            } else {
+                // Yellow to red transition (second half)
+                const yellowToRedRatio = progressRatio * 2; // 0 to 1
+                const red = 255;
+                const green = Math.round(255 * yellowToRedRatio);
+                const blue = 0;
+                body.style.backgroundColor = `rgb(${red}, ${green}, ${blue})`;
+                progressFill.style.backgroundColor = '#e74c3c';
+            }
+            
+            // When timer reaches 0, ensure it stays red
+            if (currentSeconds === 0) {
+                body.style.backgroundColor = '#e74c3c';
+                progressFill.style.backgroundColor = '#c0392b';
+            }
+        }
+        
+        function startTimer() {
+            if (!isRunning && currentSeconds > 0) {
+                isRunning = true;
+                
+                timerInterval = setInterval(() => {
+                    currentSeconds--;
+                    updateDisplay();
+                    
+                    if (currentSeconds <= 0) {
+                        // Timer finished
+                        stopTimer();
+                        alert('⏰ TIME\'S UP! ⏰');
+                        // Keep the display at 00:00 and red background
+                        currentSeconds = 0;
+                        updateDisplay();
+                    }
+                }, 1000);
+            }
+        }
+        
+        function stopTimer() {
+            if (isRunning) {
+                isRunning = false;
+                clearInterval(timerInterval);
+            }
+        }
+        
+        function resetTimer() {
+            stopTimer();
+            currentSeconds = totalSeconds;
+            updateDisplay();
+            warningText.classList.remove('show');
+            body.style.backgroundColor = '#4A90E2'; // Reset to blue
+            progressFill.style.backgroundColor = '#3498db';
+        }
+        
+        // Initialize display and start timer automatically
+        updateDisplay();
+        
+        // Auto-start the timer when page loads
+        window.addEventListener('load', function() {
+            startTimer();
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            switch(e.code) {
+                case 'Space':
+                    e.preventDefault();
+                    if (isRunning) {
+                        stopTimer();
+                    } else {
+                        startTimer();
+                    }
+                    break;
+                case 'KeyR':
+                    resetTimer();
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
